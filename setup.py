@@ -26,7 +26,6 @@ setuptools.setup(
         'geovaex>=0.0.1',
         'folium>=0.11.0,<0.11.1',
         'mapclassify>=2.2.0,<2.2.1',
-        'osmnx>=0.12.1,<0.12.2',
         'pygeos>=0.7.1,<0.7.2',
         'vaex>=3.0.0,<3.0.1',
     ],
