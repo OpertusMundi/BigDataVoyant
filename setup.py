@@ -14,7 +14,7 @@ setuptools.setup(
     url="https://github.com/OpertusMundi/BigDataVoyant.git",
     packages=setuptools.find_packages(),
     install_requires=[
-        'gdal>=2.4.0,<3.2.0',
+        'gdal>=3.0.2,<3.2.0',
         'dicttoxml>=1.7.4,<1.8.0',
         'pandas>=1.0.3,<1.0.4',
         'geopandas>=0.7.0,<0.7.1',
@@ -28,6 +28,7 @@ setuptools.setup(
         'mapclassify>=2.2.0,<2.2.1',
         'pygeos>=0.7.1,<0.7.2',
         'vaex>=3.0.0,<3.0.1',
+        'contextily>=1.0.0,<1.0.1'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
