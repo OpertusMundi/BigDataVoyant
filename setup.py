@@ -15,9 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         'gdal>=2.4.0,<3.2.0',
-        'json>=2.0.9,<2.1.0',
         'dicttoxml>=1.7.4,<1.8.0',
-        'yaml>=5.3.1,<5.4.0',
         'pandas>=1.0.3,<1.0.4',
         'geopandas>=0.7.0,<0.7.1',
         'numpy>=1.18.4,<1.18.5',
