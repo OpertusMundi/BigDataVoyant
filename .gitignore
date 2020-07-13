@@ -1,4 +1,4 @@
 __pycache__/
-notebooks/*
+notebooks/_*
 notebooks/.ipynb_checkpoints/
-notebooks/local/
+notebooks/data/local/
