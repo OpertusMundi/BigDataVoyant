@@ -14,7 +14,7 @@ setuptools.setup(
     url="https://github.com/OpertusMundi/BigDataVoyant.git",
     packages=setuptools.find_packages(),
     install_requires=[
-        'osgeo>=3.0.4,<3.0.5',
+        'osgeo>=2.4.0,<3.2.0',
         'json>=2.0.9,<2.1.0',
         'dicttoxml>=1.7.4,<1.8.0',
         'yaml>=5.3.1,<5.4.0'
