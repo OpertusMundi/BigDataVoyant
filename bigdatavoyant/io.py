@@ -3,11 +3,11 @@ import os
 import contextlib
 import sys
 from bigdatavoyant.raster_data import RasterData
+import geovaex
 
-def read_file(file, output='ogr', targetCRS=None, point_cols=None, type='vector'):
+def read_file(file, targetCRS=None, point_cols=None, type='vector'):
     if type == 'vector':
-        print('Not implemented yet')
-        return
+        return read_vector_file(file)
     elif type == 'raster':
         return read_raster_file(file)
     else:
@@ -21,30 +21,12 @@ def read_raster_file(file):
     else:
         return RasterData(dataSource)
 
-def get_crs(layer):
-    spatialRef = layer.GetSpatialRef()
-    crs = "%s:%s" % (spatialRef.GetAttrValue("AUTHORITY", 0), spatialRef.GetAttrValue("AUTHORITY", 1)) if spatialRef is not None else None
-    return crs
-
-def getDefinition(layer):
-    schema = []
-    ldefn = layer.GetLayerDefn()
-    for n in range(ldefn.GetFieldCount()):
-        fdefn = ldefn.GetFieldDefn(n)
-        schema.append(fdefn.name)
-    return schema
-
-@contextlib.contextmanager
-def writeLayerXML(csv_file, point_cols, crs):
-    import tempfile
-    name = os.path.basename(csv_file)
-    name = os.path.splitext(name)[0]
-    xml = '<OGRVRTDataSource><OGRVRTLayer name="%s"><SrcDataSource>%s</SrcDataSource><SrcLayer>%s</SrcLayer><GeometryType>wkbPoint</GeometryType><LayerSRS>%s</LayerSRS><GeometryField encoding="PointFromColumns" x="%s" y="%s"/></OGRVRTLayer></OGRVRTDataSource>'
-    try:
-        tf = tempfile.NamedTemporaryFile(mode='w+', suffix=".vrt", delete=False)
-        filename = tf.name
-        tf.write(xml % (name, csv_file, name, crs, point_cols['x'], point_cols['y']))
-        tf.close()
-        yield filename
-    finally:
-        os.unlink(filename)
+def read_vector_file(file):
+    filename = os.path.basename(file)
+    filename = os.path.splitext(filename)[0]
+    arrow_file = os.path.dirname(file) + '/' + filename + '.arrow'
+    if os.path.exists(arrow_file):
+        print('Found arrow file %s, using this instead.' % (arrow_file))
+    else:
+        geovaex.io.to_arrow(file, arrow_file)
+    return geovaex.open(arrow_file)

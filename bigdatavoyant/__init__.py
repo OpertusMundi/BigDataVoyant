@@ -4,7 +4,8 @@ try:
 except:
     sys.exit('ERROR: cannot find GDAL/OGR modules')
 import bigdatavoyant.io
-from bigdatavoyant.raster_data import RasterData
+from .raster_data import RasterData
+from .profiler import Profiler
 
 def gdal_error_handler(err_class, err_num, err_msg):
     errtype = {
