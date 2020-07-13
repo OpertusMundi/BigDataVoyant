@@ -2,6 +2,7 @@
 import folium
 from folium.plugins import HeatMap
 from mapclassify import NaturalBreaks
+from shapely.geometry import box
 import osmnx
 import pygeos as pg
 
