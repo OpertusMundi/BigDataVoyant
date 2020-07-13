@@ -150,6 +150,54 @@ class Profiler(object):
                 df = df.append(row)
         return df
 
+    def heatmap(self, tiles='OpenStreetMap', width='100%', height='100%', radius=10, maxpoints=100000):
+        pois = self.df.centroid()
+        if maxpoints is not None and maxpoints < len(self.df):
+            pois = pois.sample(n=maxpoints)
+        return heatmap(pois, tiles, width, height, radius)
+
+    def compute_clusters(self, alg='dbscan', min_pts=None, eps=None, n_jobs=-1, maxpoints=1000000):
+        pois = self.df.centroid()
+        if maxpoints is not None and maxpoints < len(self.df):
+            pois = pois.sample(n=maxpoints)
+        # pois = pois.to_geopandas_df()
+        return compute_clusters(pois, alg=alg, min_pts=min_pts, eps=eps, n_jobs=n_jobs)
+
+    def cluster_borders(self, **kwargs):
+        pois_in_clusters = kwargs.pop('pois_in_clusters', None)
+        eps_per_cluster = kwargs.pop('eps_per_cluster', None)
+        shape_type = kwargs.pop('shape_type', 1)
+        if pois_in_clusters is None or (eps_per_cluster is None and shape_type != 1):
+            pois_in_clusters, eps_per_cluster, info = self.compute_clusters(
+                alg=kwargs.pop('alg', 'dbscan'),
+                min_pts=kwargs.pop('min_pts', None),
+                eps=kwargs.pop('eps', None),
+                n_jobs=kwargs.pop('n_jobs', -1),
+                maxpoints=kwargs.pop('maxpoints', 1000000)
+            )
+        cluster_borders = cluster_shapes(
+            pois_in_clusters,
+            shape_type=shape_type,
+            eps_per_cluster=eps_per_cluster
+        )
+        return cluster_borders
+
+    def plot_clusters(self, cluster_borders=None, **kwargs):
+        if cluster_borders is None:
+            pois_in_clusters, eps_per_cluster = self.compute_clusters(
+                alg=kwargs.pop('alg', 'dbscan'),
+                min_pts=kwargs.pop('min_pts', None),
+                eps=kwargs.pop('eps', None),
+                n_jobs=kwargs.pop('n_jobs', -1),
+                maxpoints=kwargs.pop('maxpoints', 1000000)
+            )
+            cluster_borders = cluster_shapes(
+                pois_in_clusters,
+                shape_type=kwargs.pop('shape_type', 1),
+                eps_per_cluster=kwargs.pop('eps_per_cluster', None)
+            )
+        return map_choropleth(cluster_borders, id_field='cluster_id', value_field='size')
+
     def report(self, thumbnail=None, sample_method='random', sample_bbox=None, destination=None):
         thumbnail = str(uuid.uuid4()) + '.jpg' if thumbnail is None else thumbnail
         self.thumbnail(thumbnail)
