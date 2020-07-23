@@ -50,6 +50,10 @@ class Profiler(object):
     def crs(self):
         return self.df.geometry.crs
 
+    @property
+    def short_crs(self):
+        return self.df.geometry.crs.to_string()
+
     def attributes(self):
         return self.df.get_column_names(virtual=False)
 
