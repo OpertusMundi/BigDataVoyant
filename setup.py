@@ -28,7 +28,8 @@ setuptools.setup(
         'mapclassify>=2.2.0,<2.2.1',
         'pygeos>=0.7.1,<0.7.2',
         'vaex>=3.0.0,<3.0.1',
-        'contextily>=1.0.0,<1.0.1'
+        'contextily>=1.0.0,<1.0.1',
+        'netCDF4>=1.5.3,<1.5.4'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
