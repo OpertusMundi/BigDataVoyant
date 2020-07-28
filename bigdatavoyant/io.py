@@ -32,6 +32,8 @@ def read_vector_file(file, output_path=None):
     filename = os.path.basename(file)
     filename = os.path.splitext(filename)[0]
     arrow_file = os.path.dirname(file) + '/' + filename + '.arrow' if output_path is None else output_path + '/' + filename + '.arrow'
+    if output_path is not None and not os.path.exists(output_path):
+        os.makedirs(output_path)
     if os.path.exists(arrow_file):
         print('Found arrow file %s, using this instead.' % (arrow_file))
     else:
