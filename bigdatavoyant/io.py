@@ -8,7 +8,8 @@ import geovaex
 
 def read_file(file, type='vector', targetCRS=None, point_cols=None, **kwargs):
     if type == 'vector':
-        return read_vector_file(file)
+        output_path = kwargs.pop('output_path', None)
+        return read_vector_file(file, output_path)
     elif type == 'raster':
         return read_raster_file(file)
     elif type == 'netcdf':
@@ -27,10 +28,10 @@ def read_raster_file(file):
     else:
         return RasterData(dataSource)
 
-def read_vector_file(file):
+def read_vector_file(file, output_path=None):
     filename = os.path.basename(file)
     filename = os.path.splitext(filename)[0]
-    arrow_file = os.path.dirname(file) + '/' + filename + '.arrow'
+    arrow_file = os.path.dirname(file) + '/' + filename + '.arrow' if output_path is None else output_path + '/' + filename + '.arrow'
     if os.path.exists(arrow_file):
         print('Found arrow file %s, using this instead.' % (arrow_file))
     else:
