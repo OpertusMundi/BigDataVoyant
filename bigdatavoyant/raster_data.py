@@ -10,8 +10,12 @@ class RasterData(object):
         self._ds = ds
         self._count = ds.RasterCount
         self._crs = ds.GetSpatialRef()
-        self._short_crs = "%s:%s" % (self._crs.GetAttrValue("AUTHORITY", 0), self._crs.GetAttrValue("AUTHORITY", 1)) if self._crs.GetAttrValue("AUTHORITY", 0) is not None else None
-        self._unit = self._crs.GetAttrValue("UNIT")
+        if self._crs is not None:
+            self._short_crs = "%s:%s" % (self._crs.GetAttrValue("AUTHORITY", 0), self._crs.GetAttrValue("AUTHORITY", 1))
+            self._unit = self._crs.GetAttrValue("UNIT")
+        else:
+            self._short_crs = None
+            self._unit = None
         self._dimensions = [self._ds.RasterXSize, self._ds.RasterYSize]
 
     @property
