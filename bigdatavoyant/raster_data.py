@@ -135,6 +135,10 @@ class RasterData(object):
         errors, _ = validate_cog(self._ds)
         return len(errors) == 0
 
+    def sample(self, file, bbox):
+        sample_ds = gdal.Translate(file, self._ds, projWin=bbox)
+        sample_ds = None
+
     def report(self):
         report = {}
         report['info'] = self.info()
