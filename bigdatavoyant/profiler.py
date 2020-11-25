@@ -9,28 +9,62 @@ from .clustering import compute_clusters, cluster_shapes
 
 @vaex.register_dataframe_accessor('profiler', override=True)
 class Profiler(object):
+    """Vector profiler class.
+    Attributes:
+        df (object): The vector (geo)dataframe.
+        _count (int): The number of features in dataframe.
+        _categorical (list): A list of categorical fields.
+    """
+
     def __init__(self, df):
+        """Initiates the Profiles class.
+        Parameters:
+            df (object): The vector (geo)dataframe.
+        """
         self.df = df
         self._count = None
         self._categorical = None
 
     def mbr(self):
+        """Returns the Minimum Bounding Rectangle.
+        Returns:
+            (string) The WKT representation of the MBR.
+        """
         return pg.to_wkt(self.df.geometry.total_bounds())
 
     @property
     def featureCount(self):
+        """Property containing the original length of features in the dataframe."""
         return self.df._length_original
 
     def count(self):
+        """Counts the length of dataframe and caches the value in the corresponding object attribute.
+        Returns:
+            (int) The number of features.
+        """
         if self._count is not None:
             return self._count
         self._count = {col: self.df.count(col, array_type='list') for col in self.df.get_column_names(virtual=False)}
         return self._count
 
     def convex_hull(self, chunksize=50000, max_workers=None):
+        """Returns the convex hull of all geometries in the dataframe.
+        Parameters:
+            chunksize (int): The chunksize (number of features) for each computation.
+            max_workers (int): The number of workers to be used, if None equals to number of available cores.
+        Returns:
+            (string) The WKT representation of convex hull.
+        """
         return pg.to_wkt(self.df.geometry.convex_hull_all(chunksize=chunksize, max_workers=max_workers))
 
     def thumbnail(self, file, maxpoints=100000):
+        """Creates a thumbnail of the dataset.
+        Parameters:
+            file (string): The full path to save the thumbnail.
+            maxpoints (int): The maximum number of points to used for the thumbnail.
+        Raises:
+            Exception: if cannot write to filesystem.
+        """
         import contextily as ctx
         import matplotlib.pyplot as plt
         from pathlib import Path
@@ -48,16 +82,26 @@ class Profiler(object):
 
     @property
     def crs(self):
+        """Returns the native CRS (proj4 object) of the dataframe."""
         return self.df.geometry.crs
 
     @property
     def short_crs(self):
+        """Returns the short CRS of the dataframe."""
         return self.df.geometry.crs.to_string()
 
     def attributes(self):
+        """The attributes of the (geo)dataframe.
+        Returns:
+            (list) The attributes of the df.
+        """
         return self.df.get_column_names(virtual=False)
 
     def data_types(self):
+        """Calculates the datatype of each attribute.
+        Returns:
+            (dict) The datatype of each attribute.
+        """
         datatypes = {col: self.df.data_type(col) for col in self.df.get_column_names(virtual=False)}
         for col in datatypes:
             try:
@@ -66,10 +110,17 @@ class Profiler(object):
                 datatypes[col] = datatypes[col].name
         return datatypes
 
-    def categorical(self, min_frac=0.1, sample_lentgh=100000):
+    def categorical(self, min_frac=0.1, sample_length=100000):
+        """Checks whether each attribute holds categorical data, using a sample.
+        Parameters:
+            min_frac (float): The minimum fraction of unique values, under which the attribute is considered categorical.
+            sample_length (int): The length of sample to be used.
+        Returns:
+            (list): A list of the categorical attributes.
+        """
         if self._categorical is not None:
             return self._categorical
-        df = self.df.to_vaex_df().sample(n=sample_lentgh) if sample_lentgh < len(self.df) else self.df
+        df = self.df.to_vaex_df().sample(n=sample_length) if sample_length < len(self.df) else self.df
         categorical = []
         for col in df.get_column_names(virtual=False):
             nunique = df[col].nunique()
@@ -80,14 +131,44 @@ class Profiler(object):
         return self._categorical
 
     def distribution(self, attributes=None, n_obs=5, dropmissing=True):
+        """Creates the distribution of values for each attribute.
+        By default, it calculates the distribution only for the categorical attributes,
+        returning the 5 most frequent values for each attribute, dropping the missing values.
+        Parameters:
+            attributes (list): A list of the attributes to create the distribution.
+            n_obs (int): The number of most frequent values to return.
+            dropmissing (bool): Whether to drop missing values or not.
+        Returns:
+            (object) A distribution object.
+        """
         attributes = self.categorical() if attributes is None else attributes
         return Distribution(self.df, attributes, n_obs)
 
-    def distribution_ml(self, attributes=None, n_obs=5, dropmissing=True, method='brute'):
+    def distribution_ml(self, attributes=None, n_obs=5, dropmissing=True):
+        """Creates the distribution of values for each attribute using machine learning techniques.
+        By default, it calculates the distribution only for the categorical attributes,
+        returning the 5 most frequent values for each attribute, dropping the missing values.
+        Parameters:
+            attributes (list): A list of the attributes to create the distribution.
+            n_obs (int): The number of most frequent values to return.
+            dropmissing (bool): Whether to drop missing values or not.
+        Returns:
+            (object) A distribution object.
+        """
         attributes = self.categorical() if attributes is None else attributes
         return Distribution(self.df, attributes, n_obs, dropmissing=dropmissing, method='ml')
 
     def get_sample(self, n_obs=None, frac=None, method="first", bbox=None, random_state=None):
+        """Creates a sample of the dataframe.
+        Parameters:
+            n_obs (int): The number of features contained in the sample.
+            frac (float): The fraction of the total number of features contained in the sample. It overrides n_obs.
+            method (string): The method it will be used to extract the sample. One of: first, last, random.
+            bbox (list): The desired bounding box of the sample.
+            random_state (int): Seed or RandomState for reproducability, when None a random seed it chosen.
+        Returns:
+            (object): A sample dataframe.
+        """
         df = self.df if bbox is None else self.df.within(pg.box(*bbox))
         length = len(df)
         if n_obs is None and frac is None:
@@ -107,6 +188,10 @@ class Profiler(object):
         return sample
 
     def quantiles(self):
+        """Calculates the 5, 25, 50, 75, 95 quantiles.
+        Returns:
+            (object) A pandas dataframe with the calculated values.
+        """
         columns=['5', '25', '50', '75', '95']
         df = pd.DataFrame(columns=columns)
         for col in self.df.get_column_names(virtual=False):
@@ -123,6 +208,14 @@ class Profiler(object):
         return df
 
     def distinct(self, attributes=None, n_obs=None):
+        """Retrieves the distinct values for each attribute.
+        By default, it retrieves all distinct values only for the categorical attributes in the dataframe.
+        Parameters:
+            attributes (list): A list of the attributes to create the distribution.
+            n_obs (int): If given, only the first n_obs values for each attribute are returned.
+        Returns:
+            (dict) A dictionary with the list of distinct values for each attribute.
+        """
         attributes = self.categorical() if attributes is None else attributes
         if n_obs is None:
             distinct = {col: self.df.unique(col, dropna=True).tolist() for col in attributes}
@@ -131,10 +224,25 @@ class Profiler(object):
         return distinct
 
     def recurring(self, attributes=None, n_obs=5):
+        """Retrieves the most frequent values of each attribute.
+        By default, it calculates the most frequent values only for the categorical attributes,
+        returning the top 5.
+        Parameters:
+            attributes (list): A list of the attributes to create the distribution.
+            n_obs (int): The maximum number of most frequent values for each attribute.
+        Returns:
+            (dict) A dictionary with the list of most frequent values for each attribute.
+        """
         attributes = self.categorical() if attributes is None else attributes
         return {col: self.df[col].value_counts(dropna=True).index[:n_obs].tolist() for col in attributes}
 
     def statistics(self):
+        """Calculates general descriptive statistics for each attribute.
+        The statistics calculated are: minimum and maximum value, mean, median, standard deviation
+        and the sum of all values, in case the attribute contains numerical values.
+        Returns:
+            (object) A pandas dataframe with the statistics.
+        """
         columns = ['min', 'max', 'mean', 'median', 'std', 'sum']
         df = pd.DataFrame(columns=columns)
         for col in self.df.get_column_names(virtual=False):
@@ -155,12 +263,33 @@ class Profiler(object):
         return df
 
     def heatmap(self, tiles='OpenStreetMap', width='100%', height='100%', radius=10, maxpoints=100000):
+        """Creates a heatmap plot of the dataframe, using by default a maximum sample of 100000 features.
+        Parameters:
+            tiles (string): The basemap tiles provider.
+            width (string): The width of the plot.
+            height (string): The height of the plot.
+            radius (int): The radius of each point.
+            maxpoints (int): The maximum number of features that will be used for the creation of the heatmap.
+        Returns:
+            (object) A heatmap plot obejct.
+        """
         pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
             pois = pois.sample(n=maxpoints)
         return heatmap(pois, tiles, width, height, radius)
 
     def compute_clusters(self, alg='dbscan', min_pts=None, eps=None, n_jobs=-1, maxpoints=1000000):
+        """Computes clusters using centroids of geometries.
+        Parameters:
+            alg (string): The clustering algorithm to use (dbscan or hdbscan; default: dbscan).
+            min_pts (int): The minimum number of neighbors for a dense point.
+            eps (float): The neighborhood radius.
+            n_jobs (int): Number of parallel jobs to run in the algorithm (default: use all available cores).
+            max_points (int): The maximum number of features that will be used for the cluster computation.
+        Returns:
+            (object) A GeoDataFrame containing the clustered POIs and their labels. The value of parameter `eps` for each cluster
+                is also returned (which varies in the case of HDBSCAN).
+        """
         pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
             pois = pois.sample(n=maxpoints)
@@ -168,6 +297,16 @@ class Profiler(object):
         return compute_clusters(pois, alg=alg, min_pts=min_pts, eps=eps, n_jobs=n_jobs)
 
     def cluster_borders(self, **kwargs):
+        """Computes cluster borders.
+        Parameters:
+            pois_in_clusters (object): If already computed, a geodataframe containing the
+                clustered POIs. If None, the clusters will be computed
+                (see also "compute_clusters" method available parameters).
+            shape_type (int): The methods to use for computing cluster shapes (allowed values: 1-3).
+            eps_per_cluster (object): The value of parameter eps used for each cluster (required by methods 2 and 3).
+        Returns:
+            (object) A GeoDataFrame containing the cluster shapes.
+        """
         pois_in_clusters = kwargs.pop('pois_in_clusters', None)
         eps_per_cluster = kwargs.pop('eps_per_cluster', None)
         shape_type = kwargs.pop('shape_type', 1)
@@ -187,6 +326,14 @@ class Profiler(object):
         return cluster_borders
 
     def plot_clusters(self, cluster_borders=None, **kwargs):
+        """Returns a Folium Map showing the clusters. Map center and zoom level are set automatically.
+        Parameters:
+            cluster_borders (object): A GeoDataFrame containing the cluster shapes. If not given,
+                the clusters and their borders will be computed (see also "compute_clusters"
+                method available parameters).
+        Returns:
+            (object) A Folium Map object displaying the given clusters.
+        """
         if cluster_borders is None:
             pois_in_clusters, eps_per_cluster = self.compute_clusters(
                 alg=kwargs.pop('alg', 'dbscan'),
@@ -203,6 +350,10 @@ class Profiler(object):
         return map_choropleth(cluster_borders, id_field='cluster_id', value_field='size')
 
     def report(self, thumbnail=None, sample_method='random', sample_bbox=None, destination=None):
+        """Creates a report with a collection of metadata.
+        Returns:
+            (object) A report object.
+        """
         thumbnail = str(uuid.uuid4()) + '.jpg' if thumbnail is None else thumbnail
         self.thumbnail(thumbnail)
         report = {

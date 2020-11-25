@@ -3,7 +3,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class Distribution(object):
+    """Computes the distribution for selected attributes of a DataFrame.
+    Attributes:
+        _attributes (list): The selected attributes of the DataFrame.
+        _distribution (dict): The distribution for each attribute.
+    """
     def __init__(self, df, attributes, n_obs, dropmissing=True, method='brute'):
+        """Computes the distribution of a DataFrame.
+        Parameters:
+            df (object): The DataFrame.
+            attributes (list): A list of attributes of the DataFrame for which the distribution will be computed.
+            n_obs (int): The number of most frequent values to return.
+            dropmissing (bool): Whether to drop missing values or not.
+            method (string): The method used to calculate the distribution. Possible values: 'brute' (default), 'ml'.
+        """
         all_attributes = df.get_column_names(virtual=False)
         if (attributes is None):
             attributes = all_attributes
@@ -46,12 +59,21 @@ class Distribution(object):
         self._distribution = distribution
 
     def to_dict(self):
+        """Returns the distribution written in dictionary.
+        Returns:
+            (dict) The distribution for each attribute.
+        """
         return self._distribution
 
     def to_json(self):
+        """Return the json representation of the computed distribution.
+        Returns:
+            (string) JSON dumped string of the distribution.
+        """
         return json.dumps(self.to_dict())
 
     def plot(self):
+        """Plots the distribution for each attribute."""
         length = len(self._attributes)
         fig, axs = plt.subplots(length, figsize=(10,5*length))
         i=0
