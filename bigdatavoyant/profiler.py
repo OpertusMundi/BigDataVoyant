@@ -57,28 +57,27 @@ class Profiler(object):
         """
         return pg.to_wkt(self.df.geometry.convex_hull_all(chunksize=chunksize, max_workers=max_workers))
 
-    def thumbnail(self, file, maxpoints=100000):
+    def thumbnail(self, file=None, maxpoints=100000, **kwargs):
         """Creates a thumbnail of the dataset.
         Parameters:
-            file (string): The full path to save the thumbnail.
+            file (string): The full path to save the thumbnail. If None, the thumbnail is not saved to file.
             maxpoints (int): The maximum number of points to used for the thumbnail.
         Raises:
             Exception: if cannot write to filesystem.
+        Returns:
+            (string) base64 encoded png.
         """
-        import contextily as ctx
-        import matplotlib.pyplot as plt
-        from pathlib import Path
+        from .static_map import StaticMap
+
+        static_map = StaticMap(**kwargs)
         df = self.df.sample(n=maxpoints) if maxpoints < len(self.df) else self.df.copy()
-        df.geometry.to_crs('EPSG:3857')
         df = df.to_geopandas_df()
-        ax = df.plot(figsize=(10, 10), alpha=0.5, edgecolor='k')
-        ctx.add_basemap(ax)
+        static_map.addGeometries(df)
+
         if (file is not None):
-            try:
-                plt.savefig(file)
-                print("Wrote file %s, %d bytes." % (file, Path(file).stat().st_size))
-            except:
-                raise Exception('ERROR: Could not write to filesystem.')
+            static_map.toFile(file)
+        else:
+            return static_map.base64()
 
     @property
     def crs(self):
