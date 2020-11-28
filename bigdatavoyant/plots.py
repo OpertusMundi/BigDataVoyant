@@ -145,3 +145,41 @@ def get_provider_info(basemap_provider, basemap_name):
 
     return (tiles, attribution, max_zoom)
 
+
+def geojson(geojson, basemap_provider='OpenStreetMap', basemap_name='Mapnik', width='100%', height='100%', styled=False):
+    """Plots into a Folium map.
+    Parameters:
+        geojson (dict): A geojson object.
+        basemap_provider (string): The basemap provider.
+        basemap_name: The basemap itself as named by the provider.
+            List and preview of available providers and their basemaps can be found in https://leaflet-extras.github.io/leaflet-providers/preview/
+         width (int|string): Width of the map in pixels or percentage (default: 100%).
+         height (int|string): Height of the map in pixels or percentage (default: 100%).
+         styled (bool): If True, follows the mapbox simple style, as proposed in https://github.com/mapbox/simplestyle-spec/tree/master/1.1.0.
+    Returns:
+        (object) A Folium Map object displaying the geoJSON.
+    """
+    df = gpd.GeoDataFrame.from_features(geojson['features'], crs="epsg:4326")
+
+    bb = ymin, xmin, ymax, xmax = df.geometry.total_bounds
+    map_center = pg.get_coordinates(pg.centroid(pg.box(xmin, ymin, xmax, ymax)))[0]
+    tiles, attribution, max_zoom = get_provider_info(basemap_provider, basemap_name)
+    m = folium.Map(location=map_center, tiles=tiles, attr=attribution, max_zoom=max_zoom, width=width, height=height)
+    m.fit_bounds([[xmin, ymin], [xmax, ymax]])
+
+    if styled:
+        folium.GeoJson(
+            df,
+            name='geojson',
+            style_function = lambda x: dict(
+                color=x['properties']['stroke'],
+                fillColor=x['properties']['fill'],
+                fillOpacity=x['properties']['fill-opacity'],
+                opacity=0.1,
+                weight=x['properties']['stroke-width']
+            )
+        ).add_to(m)
+    else:
+        folium.GeoJson(df, name='geojson').add_to(m)
+
+    return m
