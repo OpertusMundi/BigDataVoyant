@@ -12,7 +12,8 @@ class StaticMap(object):
         Parameters:
             basemap_provider (string): The basemap provider.
             basemap_name: The basemap itself as named by the provider.
-                List and preview of available providers and their basemaps can be found in https://leaflet-extras.github.io/leaflet-providers/preview/
+                List and preview of available providers and their basemaps can be found in:
+                https://leaflet-extras.github.io/leaflet-providers/preview/
             aspect_ratio: The aspect ratio - width/height - of the map.
             width: The map width in pixels.
             height: The map height in pixels.
@@ -43,10 +44,10 @@ class StaticMap(object):
         self._height = height / dpi
 
 
-    def getBorders(self, df, aspect_ratio):
+    def _getBorders(self, df, aspect_ratio):
         """Calculates the map vertices for a geometric object, given its aspect ratio.
         Parameters:
-            df (object): GeoPandas dataframe or numpy array.
+            df (object): GeoPandas dataframe or numpy array or tuple of coordinate arrays.
             aspect_ratio (float): The aspect ratio of the map.
         Returns:
             (tuple) The coordinates of the map bounding rectangle in form (xmin, ymin, xmax, ymax).
@@ -54,6 +55,12 @@ class StaticMap(object):
         if isinstance(df, (ndarray, generic)):
             minx, miny = df.min(axis=0)
             maxx, maxy = df.max(axis=0)
+        elif isinstance(df, tuple):
+            x, y = df
+            minx = x.min()
+            maxx = x.max()
+            miny = y.min()
+            maxy = y.max()
         else:
             minx, miny, maxx, maxy = df.total_bounds
         diffx = maxx - minx
@@ -77,6 +84,20 @@ class StaticMap(object):
         return (minx, miny, maxx, maxy)
 
 
+    def _openFigure(self, fig):
+        """Reopens a matplotlib closed figure.
+        It creates a dummy figure to use its manager in order to be
+        able to show the closed figure.
+        Parameters:
+            fig (object): The matplotlib figure.
+        """
+        dummy = plt.figure()
+        new_manager = dummy.canvas.manager
+        new_manager.canvas.figure = fig
+        fig.set_canvas(new_manager.canvas)
+        plt.tight_layout()
+
+
     def addGeometries(self, gdf, weight=None, cmap='YlOrRd', colorbar_label=None, fontsize=18):
         """Add geometries to the map.
         Parameters:
@@ -91,7 +112,7 @@ class StaticMap(object):
         cb = gdf.to_crs('EPSG:3857')
         fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
 
-        minx, miny, maxx, maxy = self.getBorders(cb, self.aspect_ratio)
+        minx, miny, maxx, maxy = self._getBorders(cb, self.aspect_ratio)
 
         ax.set_xlim(minx, maxx)
         ax.set_ylim(miny, maxy)
@@ -121,8 +142,9 @@ class StaticMap(object):
                 cbr.set_label(colorbar_label, fontsize=fontsize)
             cbr.ax.tick_params(labelsize=fontsize)
 
-        self.map = plt
-        return plt
+        self.map = fig
+        plt.close(fig)
+        return fig
 
 
     def base64(self):
@@ -130,12 +152,14 @@ class StaticMap(object):
         Returns:
             (string) The base64 encoded png map.
         """
-        plt = self.map
+        fig = self.map
+        self._openFigure(fig)
         img = BytesIO()
         plt.tight_layout()
         plt.savefig(img, format='png')
         img.seek(0)
         base64_img = base64.b64encode(img.read()).decode('utf8')
+        plt.close(fig)
 
         return base64_img
 
