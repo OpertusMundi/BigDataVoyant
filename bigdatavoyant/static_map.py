@@ -147,6 +147,39 @@ class StaticMap(object):
         return fig
 
 
+    def addHeatmap(self, x, y, levels, number_of_levels=100, ignore_levels=1, cmap='YlOrRd', alpha=0.5, epsg=3857):
+        """Adds a heatmap to the static basemap.
+            x (array): The x coordinates of the values in levels.
+            y (array): The y coordinates of the values in levels.
+            levels (array): A (N, M) numpy array with the height values over which the contour is drawn (PDF for x, y).
+            number_of_levels: Determines the number and positions of the contour lines / regions (default: 100).
+            ignore_levels: Number of (first) levels (regions) to ignore (default: 1).
+            cmap (str|object): A Colormap instance or registered colormap name.
+                The colormap maps the level values to colors (default: 'YlOrRd').
+            alpha (float): The alpha blending value, between 0 (transparent) and 1 (opaque) (default: 0.5).
+            epsg (int): The epsg code (default: 3857; other projections would possibly distort the tiles of the basemap).
+        """
+        import numpy as np
+        fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
+
+        minx, miny, maxx, maxy = self._getBorders((x, y), self.aspect_ratio)
+
+        ax.set_xlim(minx, maxx)
+        ax.set_ylim(miny, maxy)
+
+        plt.xticks([], [])
+        plt.yticks([], [])
+
+        cset = ax.contourf(x, y, levels, number_of_levels, cmap=cmap, alpha=alpha, antialiased=True)
+        ctx.add_basemap(ax, source=self.basemap, crs="epsg:{}".format(epsg))
+        for i in range(0, ignore_levels):
+            cset.collections[i].set_alpha(0.)
+
+        self.map = fig
+        plt.close(fig)
+        return fig
+
+
     def base64(self):
         """Base64 png encoding of the map.
         Returns:
