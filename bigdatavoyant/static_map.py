@@ -171,7 +171,8 @@ class StaticMap(object):
             **kwargs: Keyword arguments for matplotlib.pyplot.savefig
         """
         from pathlib import Path
-        plt = self.map
+        fig = self.map
+        self._openFigure(fig)
         plt.tight_layout()
         try:
             plt.savefig(file, **kwargs)
@@ -179,3 +180,9 @@ class StaticMap(object):
         except:
             raise Exception('ERROR: Could not write to filesystem.')
         plt.savefig(file, **kwargs)
+
+
+    def show(self):
+        """Displays the static map."""
+        self._openFigure(self.map)
+        plt.show()
