@@ -6,6 +6,7 @@ from .distribution import Distribution
 from .report import Report
 from .plots import heatmap, map_choropleth
 from .clustering import Clustering
+from .heatmap import Heatmap
 
 @vaex.register_dataframe_accessor('profiler', override=True)
 class Profiler(object):
@@ -261,39 +262,29 @@ class Profiler(object):
                 df = df.append(row)
         return df
 
-    def heatmap(self, tiles='OpenStreetMap', width='100%', height='100%', radius=10, maxpoints=100000):
+    def leaflet_heatmap(self, radius=10, maxpoints=100000, **kwargs):
         """Creates a heatmap plot of the dataframe, using by default a maximum sample of 100000 features.
         Parameters:
-            tiles (string): The basemap tiles provider.
-            width (string): The width of the plot.
-            height (string): The height of the plot.
             radius (int): The radius of each point.
             maxpoints (int): The maximum number of features that will be used for the creation of the heatmap.
+            **kwargs: Additional arguments for heatmap plot. See plot.heatmap.
         Returns:
-            (object) A heatmap plot obejct.
+            (object) A Folium plot obejct.
         """
         pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
             pois = pois.sample(n=maxpoints)
-        return heatmap(pois, tiles, width, height, radius)
+        return heatmap(pois, radius=radius, **kwargs)
 
-    def compute_clusters(self, alg='dbscan', min_pts=None, eps=None, n_jobs=-1, maxpoints=1000000):
-        """Computes clusters using centroids of geometries.
+    def heatmap(self, **kwargs):
+        """Creates a heatmap plot of the dataframe, using by default the whole dataset.
         Parameters:
-            alg (string): The clustering algorithm to use (dbscan or hdbscan; default: dbscan).
-            min_pts (int): The minimum number of neighbors for a dense point.
-            eps (float): The neighborhood radius.
-            n_jobs (int): Number of parallel jobs to run in the algorithm (default: use all available cores).
-            max_points (int): The maximum number of features that will be used for the cluster computation.
+            **kwargs: Optional arguments for heatmap. See heatmap.Heatmap.
         Returns:
-            (object) A GeoDataFrame containing the clustered POIs and their labels. The value of parameter `eps` for each cluster
-                is also returned (which varies in the case of HDBSCAN).
+            (object) A Heatmap obejct.
         """
-        pois = self.df.centroid()
-        if maxpoints is not None and maxpoints < len(self.df):
-            pois = pois.sample(n=maxpoints)
-        # pois = pois.to_geopandas_df()
-        return compute_clusters(pois, alg=alg, min_pts=min_pts, eps=eps, n_jobs=n_jobs)
+        heatmap = Heatmap(self.df, **kwargs)
+        return heatmap
 
     def clusters(self, maxpoints=1000000, **kwargs):
         """Computes clusters using centroids of geometries.
@@ -308,26 +299,43 @@ class Profiler(object):
             pois = pois.sample(n=maxpoints)
         return Clustering(pois, **kwargs)
 
-    def report(self, thumbnail=None, sample_method='random', sample_bbox=None, destination=None):
+    def report(self, **kwargs):
         """Creates a report with a collection of metadata.
+        Parameters:
+            **kwargs: See StaticMap class
         Returns:
             (object) A report object.
         """
-        thumbnail = str(uuid.uuid4()) + '.jpg' if thumbnail is None else thumbnail
-        self.thumbnail(thumbnail)
+        from .static_map import StaticMap
+        from json import loads
+
+        static_map = StaticMap(**kwargs)
+
+        thumbnail = self.thumbnail(**kwargs)
+        clusters = self.clusters()
+        shapes = clusters.shapes()
+        static_map.addGeometries(shapes, weight='size')
+        clusters_static = static_map.base64()
+        heatmap = self.heatmap()
+        heatmap_static = heatmap.to_static_map(**kwargs).base64()
+
         report = {
             'mbr': self.mbr(),
             'featureCount': self.featureCount,
             'count': self.count(),
-            'convex_hull': self.convex_hull(),
+            'convexHull': self.convex_hull(),
             'thumbnail': thumbnail,
-            'crs': self.crs.__str__(),
+            'crs': self.short_crs,
             'attributes': self.attributes(),
             'datatypes': self.data_types(),
             'distribution': self.distribution().to_dict(),
             'quantiles': self.quantiles().to_dict(),
             'distinct': self.distinct(),
             'recurring': self.recurring(),
+            'heatmap': heatmap.geojson,
+            'heatmapStatic': heatmap_static,
+            'clusters': loads(shapes.to_json()),
+            'clustersStatic': clusters_static,
             'statistics': self.statistics().to_dict()
         }
         return Report(report)
