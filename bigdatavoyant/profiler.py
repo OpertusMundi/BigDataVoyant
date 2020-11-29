@@ -5,7 +5,7 @@ import uuid
 from .distribution import Distribution
 from .report import Report
 from .plots import heatmap, map_choropleth
-from .clustering import compute_clusters, cluster_shapes
+from .clustering import Clustering
 
 @vaex.register_dataframe_accessor('profiler', override=True)
 class Profiler(object):
@@ -295,58 +295,18 @@ class Profiler(object):
         # pois = pois.to_geopandas_df()
         return compute_clusters(pois, alg=alg, min_pts=min_pts, eps=eps, n_jobs=n_jobs)
 
-    def cluster_borders(self, **kwargs):
-        """Computes cluster borders.
+    def clusters(self, maxpoints=1000000, **kwargs):
+        """Computes clusters using centroids of geometries.
         Parameters:
-            pois_in_clusters (object): If already computed, a geodataframe containing the
-                clustered POIs. If None, the clusters will be computed
-                (see also "compute_clusters" method available parameters).
-            shape_type (int): The methods to use for computing cluster shapes (allowed values: 1-3).
-            eps_per_cluster (object): The value of parameter eps used for each cluster (required by methods 2 and 3).
+            max_points (int): The maximum number of features that will be used for the cluster computation.
+            **kwargs: Additional optional arguments for clustering. See clustering.Clustering.
         Returns:
-            (object) A GeoDataFrame containing the cluster shapes.
+            (object) A Clustering object.
         """
-        pois_in_clusters = kwargs.pop('pois_in_clusters', None)
-        eps_per_cluster = kwargs.pop('eps_per_cluster', None)
-        shape_type = kwargs.pop('shape_type', 1)
-        if pois_in_clusters is None or (eps_per_cluster is None and shape_type != 1):
-            pois_in_clusters, eps_per_cluster, info = self.compute_clusters(
-                alg=kwargs.pop('alg', 'dbscan'),
-                min_pts=kwargs.pop('min_pts', None),
-                eps=kwargs.pop('eps', None),
-                n_jobs=kwargs.pop('n_jobs', -1),
-                maxpoints=kwargs.pop('maxpoints', 1000000)
-            )
-        cluster_borders = cluster_shapes(
-            pois_in_clusters,
-            shape_type=shape_type,
-            eps_per_cluster=eps_per_cluster
-        )
-        return cluster_borders
-
-    def plot_clusters(self, cluster_borders=None, **kwargs):
-        """Returns a Folium Map showing the clusters. Map center and zoom level are set automatically.
-        Parameters:
-            cluster_borders (object): A GeoDataFrame containing the cluster shapes. If not given,
-                the clusters and their borders will be computed (see also "compute_clusters"
-                method available parameters).
-        Returns:
-            (object) A Folium Map object displaying the given clusters.
-        """
-        if cluster_borders is None:
-            pois_in_clusters, eps_per_cluster = self.compute_clusters(
-                alg=kwargs.pop('alg', 'dbscan'),
-                min_pts=kwargs.pop('min_pts', None),
-                eps=kwargs.pop('eps', None),
-                n_jobs=kwargs.pop('n_jobs', -1),
-                maxpoints=kwargs.pop('maxpoints', 1000000)
-            )
-            cluster_borders = cluster_shapes(
-                pois_in_clusters,
-                shape_type=kwargs.pop('shape_type', 1),
-                eps_per_cluster=kwargs.pop('eps_per_cluster', None)
-            )
-        return map_choropleth(cluster_borders, id_field='cluster_id', value_field='size')
+        pois = self.df.centroid()
+        if maxpoints is not None and maxpoints < len(self.df):
+            pois = pois.sample(n=maxpoints)
+        return Clustering(pois, **kwargs)
 
     def report(self, thumbnail=None, sample_method='random', sample_bbox=None, destination=None):
         """Creates a report with a collection of metadata.
