@@ -272,12 +272,11 @@ class NetCDFProfiler(object):
         print("Wrote file %s, %d bytes." % (filename, Path(filename).stat().st_size))
         sample_ds.close()
 
-    def report(self, sample_bbox, sample_filename):
+    def report(self):
         """Creates a report with a collection of metadata.
         Returns:
             (object) A report object.
         """
-        self.sample(sample_bbox, filename=sample_filename, format='NETCDF4', description='Sample')
         dimensions = self.dimensions()
         variables = self.variables()
         report = {
@@ -291,7 +290,6 @@ class NetCDFProfiler(object):
             'mbr': self.mbr(),
             'temporal_extent': self.time_extent(),
             'no_data_values': self.no_data_values(),
-            'sample': sample_filename,
             'statistics': self.stats()
         }
         return Report(report)
