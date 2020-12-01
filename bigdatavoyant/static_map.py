@@ -171,7 +171,10 @@ class StaticMap(object):
         plt.yticks([], [])
 
         cset = ax.contourf(x, y, levels, number_of_levels, cmap=cmap, alpha=alpha, antialiased=True)
-        ctx.add_basemap(ax, source=self.basemap, crs="epsg:{}".format(epsg))
+        if epsg == 3857:
+            ctx.add_basemap(ax, source=self.basemap)
+        else:
+            ctx.add_basemap(ax, source=self.basemap, crs="epsg:{}".format(epsg))
         for i in range(0, ignore_levels):
             cset.collections[i].set_alpha(0.)
 
