@@ -31,7 +31,8 @@ setuptools.setup(
         'contextily>=1.0.0,<1.0.1',
         'netCDF4>=1.5.3,<1.5.4',
         'scipy>=1.5.0,<1.5.9',
-        'geojsoncontour>=0.4.0,<0.5.0'
+        'geojsoncontour>=0.4.0,<0.5.0',
+        'descartes>=1.1.0,<1.1.1'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
