@@ -29,7 +29,9 @@ setuptools.setup(
         'pygeos>=0.7.1,<0.7.2',
         'vaex>=3.0.0,<3.0.1',
         'contextily>=1.0.0,<1.0.1',
-        'netCDF4>=1.5.3,<1.5.4'
+        'netCDF4>=1.5.3,<1.5.4',
+        'scipy>=1.5.0,<1.5.9',
+        'geojsoncontour>=0.4.0,<0.5.0'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
