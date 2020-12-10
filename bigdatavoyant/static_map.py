@@ -3,7 +3,7 @@ import base64
 import contextily as ctx
 import matplotlib.pyplot as plt
 from pathlib import Path
-from numpy import ndarray, generic
+from numpy import ndarray, generic, array
 
 class StaticMap(object):
     """Creation of static maps."""
@@ -141,6 +141,39 @@ class StaticMap(object):
             if colorbar_label is not None:
                 cbr.set_label(colorbar_label, fontsize=fontsize)
             cbr.ax.tick_params(labelsize=fontsize)
+
+        self.map = fig
+        plt.close(fig)
+        return fig
+
+
+    def addWKT(self, wkt, epsg):
+        """Add WKT in static map.
+        Parameters:
+            wkt (string) The Well-Known-Text representation of geometry.
+            epsg (int) The WKT CRS.
+        Returns:
+            (obj) The matplotlib plot.
+        """
+        import pygeos as pg
+        from pyproj.transformer import Transformer
+        geometry = pg.from_wkt(wkt)
+        coords = pg.get_coordinates(geometry)
+        try:
+            transformer = Transformer.from_crs(epsg, 3857, always_xy=True)
+            new_coords = transformer.transform(coords[:, 0], coords[:, 1])
+            geometry = pg.set_coordinates(geometry, array(new_coords).T)
+        except:
+            raise Exception('Transformation to EPSG:3857 failed.')
+        minx, miny, maxx, maxy = self._getBorders(new_coords, self.aspect_ratio)
+
+        fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
+        ax.set_xlim(minx, maxx)
+        ax.set_ylim(miny, maxy)
+        plt.xticks([], [])
+        plt.yticks([], [])
+        ax.fill(new_coords[0], new_coords[1], facecolor='#50505050', edgecolor='orange', linewidth=3)
+        ctx.add_basemap(ax, source=self.basemap)
 
         self.map = fig
         plt.close(fig)

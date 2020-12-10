@@ -311,6 +311,20 @@ class Profiler(object):
 
         static_map = StaticMap(**kwargs)
 
+        mbr = self.mbr()
+        try:
+            static_map.addWKT(mbr, self.short_crs)
+            mbr_static = static_map.base64()
+        except:
+            mbr_static = None
+
+        convex_hull = self.convex_hull()
+        try:
+            static_map.addWKT(convex_hull, self.short_crs)
+            convex_hull_static = static_map.base64()
+        except Exception as e:
+            convex_hull_static = None
+
         try:
             thumbnail = self.thumbnail(**kwargs)
         except:
@@ -331,10 +345,12 @@ class Profiler(object):
             heatmap_static = None
 
         report = {
-            'mbr': self.mbr(),
+            'mbr': mbr,
+            'mbrStatic': mbr_static,
             'featureCount': self.featureCount,
             'count': self.count(),
-            'convexHull': self.convex_hull(),
+            'convexHull': convex_hull,
+            'convexHullStatic': convex_hull_static,
             'thumbnail': thumbnail,
             'crs': self.short_crs,
             'attributes': self.attributes(),
