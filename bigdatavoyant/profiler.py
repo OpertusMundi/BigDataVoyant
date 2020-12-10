@@ -311,13 +311,24 @@ class Profiler(object):
 
         static_map = StaticMap(**kwargs)
 
-        thumbnail = self.thumbnail(**kwargs)
+        try:
+            thumbnail = self.thumbnail(**kwargs)
+        except:
+            thumbnail = None
         clusters = self.clusters()
         shapes = clusters.shapes()
-        static_map.addGeometries(shapes, weight='size')
-        clusters_static = static_map.base64()
-        heatmap = self.heatmap()
-        heatmap_static = heatmap.to_static_map(**kwargs).base64()
+        try:
+            static_map.addGeometries(shapes, weight='size')
+            clusters_static = static_map.base64()
+        except:
+            clusters_static = None
+        try:
+            heatmap = self.heatmap()
+            heatmap_static = heatmap.to_static_map(**kwargs).base64()
+            heatmap_geojson = heatmap.geojson
+        except:
+            heatmap_geojson = None
+            heatmap_static = None
 
         report = {
             'mbr': self.mbr(),
@@ -332,7 +343,7 @@ class Profiler(object):
             'quantiles': self.quantiles().to_dict(),
             'distinct': self.distinct(),
             'recurring': self.recurring(),
-            'heatmap': heatmap.geojson,
+            'heatmap': heatmap_geojson,
             'heatmapStatic': heatmap_static,
             'clusters': loads(shapes.to_json()),
             'clustersStatic': clusters_static,
