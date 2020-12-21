@@ -26,7 +26,7 @@ class Report(dict):
 
     def __str__(self):
         """Overrides the parent method."""
-        return json.dumps(self, indent=2)
+        return json.dumps(self, indent=2, default=convert)
 
     def to_json(self, indent=None):
         """Converts to JSON.
