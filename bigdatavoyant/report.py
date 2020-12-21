@@ -1,4 +1,5 @@
 import json
+import numpy
 from dicttoxml import dicttoxml
 from xml.dom.minidom import parseString
 import yaml
