@@ -1,8 +1,18 @@
 import json
+import numpy
 from dicttoxml import dicttoxml
 from xml.dom.minidom import parseString
 import yaml
 import os
+
+
+def convert(o):
+    if isinstance(o, numpy.int64) or isinstance(o, numpy.int32):
+        return int(o)
+    elif isinstance(o, numpy.float64) or isinstance(o, numpy.float32):
+        return float(o)
+    raise TypeError
+
 
 class Report(dict):
     """A collection of useful methods for reporting."""
@@ -16,7 +26,7 @@ class Report(dict):
 
     def __str__(self):
         """Overrides the parent method."""
-        return json.dumps(self, indent=2)
+        return json.dumps(self, indent=2, default=convert)
 
     def to_json(self, indent=None):
         """Converts to JSON.
@@ -25,7 +35,7 @@ class Report(dict):
         Returns:
             (string) json representation of the report.
         """
-        return json.dumps(self, indent=indent)
+        return json.dumps(self, indent=indent, default=convert)
 
     def to_xml(self):
         """Converts to xml.
