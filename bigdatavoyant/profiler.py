@@ -1,12 +1,19 @@
 import vaex
+from geovaex import GeoDataFrame
 import pygeos as pg
 import pandas as pd
 import uuid
+import warnings
 from .distribution import Distribution
 from .report import Report
 from .plots import heatmap, map_choropleth
 from .clustering import Clustering
 from .heatmap import Heatmap
+
+def custom_formatwarning(msg, *args, **kwargs):
+    """Ignore everything except the message."""
+    return str(msg) + '\n'
+warnings.formatwarning = custom_formatwarning
 
 @vaex.register_dataframe_accessor('profiler', override=True)
 class Profiler(object):
@@ -25,12 +32,16 @@ class Profiler(object):
         self.df = df
         self._count = None
         self._categorical = None
+        self._has_geometry = isinstance(df, GeoDataFrame)
 
     def mbr(self):
         """Returns the Minimum Bounding Rectangle.
         Returns:
             (string) The WKT representation of the MBR.
         """
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         return pg.to_wkt(self.df.geometry.total_bounds())
 
     @property
@@ -56,6 +67,9 @@ class Profiler(object):
         Returns:
             (string) The WKT representation of convex hull.
         """
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         return pg.to_wkt(self.df.geometry.convex_hull_all(chunksize=chunksize, max_workers=max_workers))
 
     def thumbnail(self, file=None, maxpoints=100000, **kwargs):
@@ -69,6 +83,9 @@ class Profiler(object):
             (string) base64 encoded png.
         """
         from .static_map import StaticMap
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
 
         static_map = StaticMap(**kwargs)
         df = self.df.sample(n=maxpoints) if maxpoints < len(self.df) else self.df.copy()
@@ -83,11 +100,17 @@ class Profiler(object):
     @property
     def crs(self):
         """Returns the native CRS (proj4 object) of the dataframe."""
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         return self.df.geometry.crs
 
     @property
     def short_crs(self):
         """Returns the short CRS of the dataframe."""
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         return self.df.geometry.crs.to_string()
 
     def attributes(self):
@@ -169,7 +192,12 @@ class Profiler(object):
         Returns:
             (object): A sample dataframe.
         """
-        df = self.df if bbox is None else self.df.within(pg.box(*bbox))
+        df = self.df
+        if bbox is not None:
+            if not self._has_geometry:
+                warnings.warn('DataFrame is not spatial.')
+            else:
+                df = self.df.within(pg.box(*bbox))
         length = len(df)
         if n_obs is None and frac is None:
             n_obs = min(round(0.05*length), 100000)
@@ -271,6 +299,9 @@ class Profiler(object):
         Returns:
             (object) A Folium plot obejct.
         """
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
             pois = pois.sample(n=maxpoints)
@@ -283,6 +314,9 @@ class Profiler(object):
         Returns:
             (object) A Heatmap obejct.
         """
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         heatmap = Heatmap(self.df, **kwargs)
         return heatmap
 
@@ -294,6 +328,9 @@ class Profiler(object):
         Returns:
             (object) A Clustering object.
         """
+        if not self._has_geometry:
+            warnings.warn('DataFrame is not spatial.')
+            return None
         pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
             pois = pois.sample(n=maxpoints)
@@ -309,42 +346,60 @@ class Profiler(object):
         from .static_map import StaticMap
         from json import loads
 
-        static_map = StaticMap(**kwargs)
+        if self._has_geometry:
+            static_map = StaticMap(**kwargs)
 
-        mbr = self.mbr()
-        try:
-            static_map.addWKT(mbr, self.short_crs)
-            mbr_static = static_map.base64()
-        except:
+            mbr = self.mbr()
+            try:
+                static_map.addWKT(mbr, self.short_crs)
+                mbr_static = static_map.base64()
+            except:
+                mbr_static = None
+
+            convex_hull = self.convex_hull()
+            try:
+                static_map.addWKT(convex_hull, self.short_crs)
+                convex_hull_static = static_map.base64()
+            except Exception as e:
+                convex_hull_static = None
+
+            try:
+                thumbnail = self.thumbnail(**kwargs)
+            except:
+                thumbnail = None
+            clusters = self.clusters()
+            shapes = clusters.shapes()
+            try:
+                static_map.addGeometries(shapes, weight='size')
+                clusters_static = static_map.base64()
+            except:
+                clusters_static = None
+            shapes = loads(shapes.to_json())
+            try:
+                heatmap = self.heatmap()
+                heatmap_static = heatmap.to_static_map(**kwargs).base64()
+                heatmap_geojson = heatmap.geojson
+            except:
+                heatmap_geojson = None
+                heatmap_static = None
+
+            short_crs = self.short_crs
+            asset_type = 'vector'
+        else:
+            mbr = None
             mbr_static = None
-
-        convex_hull = self.convex_hull()
-        try:
-            static_map.addWKT(convex_hull, self.short_crs)
-            convex_hull_static = static_map.base64()
-        except Exception as e:
+            convex_hull = None
             convex_hull_static = None
-
-        try:
-            thumbnail = self.thumbnail(**kwargs)
-        except:
             thumbnail = None
-        clusters = self.clusters()
-        shapes = clusters.shapes()
-        try:
-            static_map.addGeometries(shapes, weight='size')
-            clusters_static = static_map.base64()
-        except:
-            clusters_static = None
-        try:
-            heatmap = self.heatmap()
-            heatmap_static = heatmap.to_static_map(**kwargs).base64()
-            heatmap_geojson = heatmap.geojson
-        except:
+            short_crs = None
             heatmap_geojson = None
             heatmap_static = None
+            shapes = None
+            clusters_static = None
+            asset_type = 'tabular'
 
         report = {
+            'assetType': asset_type,
             'mbr': mbr,
             'mbrStatic': mbr_static,
             'featureCount': self.featureCount,
@@ -352,7 +407,7 @@ class Profiler(object):
             'convexHull': convex_hull,
             'convexHullStatic': convex_hull_static,
             'thumbnail': thumbnail,
-            'crs': self.short_crs,
+            'crs': short_crs,
             'attributes': self.attributes(),
             'datatypes': self.data_types(),
             'distribution': self.distribution().to_dict(),
@@ -361,7 +416,7 @@ class Profiler(object):
             'recurring': self.recurring(),
             'heatmap': heatmap_geojson,
             'heatmapStatic': heatmap_static,
-            'clusters': loads(shapes.to_json()),
+            'clusters': shapes,
             'clustersStatic': clusters_static,
             'statistics': self.statistics().to_dict()
         }
