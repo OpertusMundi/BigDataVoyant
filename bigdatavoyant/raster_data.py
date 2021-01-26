@@ -249,6 +249,6 @@ class RasterData(object):
         report['datatypes'] = self.datatypes()
         report['noDataValue'] = self.noDataValue()
         report['crs'] = self._short_crs
-        report['colorInterpetation'] = self.colorInterpretation()
+        report['colorInterpretation'] = self.colorInterpretation()
 
         return Report(report)
