@@ -280,7 +280,7 @@ class NetCDFProfiler(object):
         dimensions = self.dimensions()
         variables = self.variables()
         report = {
-            'assetType': 'NetCDF'
+            'assetType': 'NetCDF',
             'metadata': self.metadata(),
             'dimensionsSize': dimensions.size,
             'dimensionsList': dimensions.list,
