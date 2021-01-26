@@ -280,16 +280,17 @@ class NetCDFProfiler(object):
         dimensions = self.dimensions()
         variables = self.variables()
         report = {
+            'assetType': 'NetCDF'
             'metadata': self.metadata(),
-            'dimensions_size': dimensions.size,
-            'dimensions_list': dimensions.list,
-            'dimensions_properties': dimensions.properties(),
-            'variables_size': variables.size,
-            'variables_list': variables.list,
-            'variables_properties': variables.properties(),
+            'dimensionsSize': dimensions.size,
+            'dimensionsList': dimensions.list,
+            'dimensionsProperties': dimensions.properties(),
+            'variablesSize': variables.size,
+            'variablesList': variables.list,
+            'variablesProperties': variables.properties(),
             'mbr': self.mbr(),
-            'temporal_extent': self.time_extent(),
-            'no_data_values': self.no_data_values(),
+            'temporalExtent': self.time_extent(),
+            'noDataValues': self.no_data_values(),
             'statistics': self.stats()
         }
         return Report(report)

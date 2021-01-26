@@ -238,16 +238,17 @@ class RasterData(object):
             (object) A report object.
         """
         report = {}
+        report['assetType'] = 'raster'
         report['info'] = self.info()
         report['statistics'] = self.statistics()
         report['histogram'] = self.defaultHistogram()
         report['mbr'] = self.mbr().wkt
         report['resolution'] = self.resolution()
         report['cog'] = self.is_cog()
-        report['number_of_bands'] = self._count
+        report['numberOfBands'] = self._count
         report['datatypes'] = self.datatypes()
         report['noDataValue'] = self.noDataValue()
         report['crs'] = self._short_crs
-        report['color_interpetation'] = self.colorInterpretation()
+        report['colorInterpetation'] = self.colorInterpretation()
 
         return Report(report)
