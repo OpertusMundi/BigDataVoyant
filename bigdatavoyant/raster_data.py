@@ -232,17 +232,26 @@ class RasterData(object):
         sample_ds = gdal.Translate(file, self._ds, projWin=bbox)
         sample_ds = None
 
-    def report(self):
+    def report(self, **kwargs):
         """Creates a report with a collection of metadata.
         Returns:
             (object) A report object.
         """
+        from .static_map import StaticMap
+        mbr = self.mbr().wkt
+        static_map = StaticMap(**kwargs)
+        try:
+            static_map.addWKT(mbr, self._short_crs)
+            mbr_static = static_map.base64()
+        except:
+            mbr_static = None
         report = {}
         report['assetType'] = 'raster'
         report['info'] = self.info()
         report['statistics'] = self.statistics()
         report['histogram'] = self.defaultHistogram()
-        report['mbr'] = self.mbr().wkt
+        report['mbr'] = mbr
+        report['mbrStatic'] = mbr_static
         report['resolution'] = self.resolution()
         report['cog'] = self.is_cog()
         report['numberOfBands'] = self._count

@@ -105,7 +105,7 @@ class NetCDFProfiler(object):
         _time_attr (string): The variable name containing the time coordinate.
     """
 
-    def __init__(self, ds, lat_attr='lat', lon_attr='lon', time_attr='time'):
+    def __init__(self, ds, lat_attr='lat', lon_attr='lon', time_attr='time', crs='WGS 84'):
         """Creates a NetCDF Profiler object from a (numpy) dataset.
         Parameters:
             ds (object): The (numpy) dataset.
@@ -118,6 +118,7 @@ class NetCDFProfiler(object):
         self._lat_attr = lat_attr
         self._lon_attr = lon_attr
         self._time_attr = time_attr
+        self._short_crs = crs
 
     @classmethod
     def from_file(cls, filename, lat_attr='lat', lon_attr='lon', time_attr='time'):
@@ -272,11 +273,19 @@ class NetCDFProfiler(object):
         print("Wrote file %s, %d bytes." % (filename, Path(filename).stat().st_size))
         sample_ds.close()
 
-    def report(self):
+    def report(self, **kwargs):
         """Creates a report with a collection of metadata.
         Returns:
             (object) A report object.
         """
+        from .static_map import StaticMap
+        mbr = self.mbr()
+        static_map = StaticMap(**kwargs)
+        try:
+            static_map.addWKT(mbr, self._short_crs)
+            mbr_static = static_map.base64()
+        except:
+            mbr_static = None
         dimensions = self.dimensions()
         variables = self.variables()
         report = {
@@ -288,7 +297,8 @@ class NetCDFProfiler(object):
             'variablesSize': variables.size,
             'variablesList': variables.list,
             'variablesProperties': variables.properties(),
-            'mbr': self.mbr(),
+            'mbr': mbr,
+            'mbrStatic': mbr_static,
             'temporalExtent': self.time_extent(),
             'noDataValues': self.no_data_values(),
             'statistics': self.stats()
