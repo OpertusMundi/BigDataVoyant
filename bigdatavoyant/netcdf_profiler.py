@@ -222,7 +222,13 @@ class NetCDFProfiler(object):
         """
         if variable is not None:
             return self._stats(variable)
-        return {var: self._stats(var) for var in self.dataset.variables}
+        stats = {}
+        for var in self.dataset.variables:
+            try:
+                stats[var] = self._stats(var)
+            except:
+                stats[var] = None
+        return stats
 
     def sample(self, bbox, filename='sample.nc', format='NETCDF4', description='Sample'):
         """Creates, and writes to a netcdf file, a sample of the dataset.
