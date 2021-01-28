@@ -115,6 +115,11 @@ class NetCDFProfiler(object):
         """
         assert isinstance(ds, Dataset)
         self._ds = ds
+        variables = ds.variables.keys()
+        if lat_attr is not None:
+            lat_attr = 'lat' if 'lat' in variables else 'latitude'
+        if lon_attr is not None:
+            lon_attr = 'lon' if 'lon' in variables else 'longitude'
         self._lat_attr = lat_attr
         self._lon_attr = lon_attr
         self._time_attr = time_attr
