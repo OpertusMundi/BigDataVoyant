@@ -169,10 +169,16 @@ class NetCDFProfiler(object):
         Returns:
             (string) The WKT representation of the MBR.
         """
+        variables = self.dataset.variables.keys()
+        if self._lat_attr not in variables or self._lon_attr not in variables:
+            return None
         lat_min = self.dataset.variables[self._lat_attr][:].min()
         lat_max = self.dataset.variables[self._lat_attr][:].max()
         lon_min = self.dataset.variables[self._lon_attr][:].min()
         lon_max = self.dataset.variables[self._lon_attr][:].max()
+        if self._short_crs == 'WGS 84' and (lon_min >= 0 and lon_max > 180.):
+            lon_min -= 180.
+            lon_max -= 180.
         return to_wkt(box(lon_min, lat_min, lon_max, lat_max))
 
     def time_extent(self):
