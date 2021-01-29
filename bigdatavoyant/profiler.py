@@ -143,7 +143,7 @@ class Profiler(object):
         """
         if self._categorical is not None:
             return self._categorical
-        df = self.df.to_vaex_df if isinstance(self.df, GeoDataFrame) else self.df
+        df = self.df.to_vaex_df() if isinstance(self.df, GeoDataFrame) else self.df
         df = df.sample(n=sample_length) if sample_length < len(df) else df
         categorical = []
         for col in df.get_column_names(virtual=False):
