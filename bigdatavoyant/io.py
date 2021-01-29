@@ -19,12 +19,12 @@ def read_file(file, type='vector', targetCRS=None, point_cols=None, **kwargs):
     """
     if type == 'vector':
         output_path = kwargs.pop('output_path', None)
-        return read_vector_file(file, output_path)
+        return read_vector_file(file, output_path, **kwargs)
     elif type == 'raster':
         return read_raster_file(file)
     elif type == 'netcdf':
-        lat_attr = kwargs.pop('lat_attr', 'lat')
-        lon_attr = kwargs.pop('lon_attr', 'lon')
+        lat_attr = kwargs.pop('lat', 'lat')
+        lon_attr = kwargs.pop('lon', 'lon')
         time_attr = kwargs.pop('time_attr', 'time')
         return read_netcdf(file, lat_attr=lat_attr, lon_attr=lon_attr, time_attr=time_attr)
     else:
@@ -42,7 +42,7 @@ def read_raster_file(file):
     else:
         return RasterData(dataSource)
 
-def read_vector_file(file, output_path=None):
+def read_vector_file(file, output_path=None, **kwargs):
     """Reads a vector file into a DataFrame.
     For vector files an intermediate ARROW file is created.
     Parameters:
@@ -55,13 +55,9 @@ def read_vector_file(file, output_path=None):
     arrow_file = os.path.dirname(file) + '/' + filename + '.arrow' if output_path is None else output_path + '/' + filename + '.arrow'
     if output_path is not None and not os.path.exists(output_path):
         os.makedirs(output_path)
-    if os.path.exists(arrow_file):
-        print('Found arrow file %s, using this instead.' % (arrow_file))
-    else:
-        geovaex.io.to_arrow(file, arrow_file)
-    return geovaex.open(arrow_file)
+    return geovaex.read_file(file, convert=arrow_file, **kwargs)
 
-def read_netcdf(file, lat_attr='lat', lon_attr='lon', time_attr='time'):
+def read_netcdf(file, lat_attr='lat', lon_attr='lon', time_attr='time', crs='WGS 84'):
     """Reads a NetCDF file into a DataFrame.
     Parameters:
         lat_attr (string): The variable name containing the latitude coordinate.
