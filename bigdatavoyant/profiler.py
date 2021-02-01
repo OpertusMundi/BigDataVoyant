@@ -133,7 +133,7 @@ class Profiler(object):
                 datatypes[col] = datatypes[col].name
         return datatypes
 
-    def categorical(self, min_frac=0.1, sample_length=100000):
+    def categorical(self, min_frac=0.01, sample_length=10000):
         """Checks whether each attribute holds categorical data, using a sample.
         Parameters:
             min_frac (float): The minimum fraction of unique values, under which the attribute is considered categorical.
@@ -221,7 +221,7 @@ class Profiler(object):
         Returns:
             (object) A pandas dataframe with the calculated values.
         """
-        columns=['5', '25', '50', '75', '95']
+        columns=[5, 25, 50, 75, 95]
         df = pd.DataFrame(columns=columns)
         for col in self.df.get_column_names(virtual=False):
             quantiles = []
@@ -236,7 +236,7 @@ class Profiler(object):
                 df = df.append(row)
         return df
 
-    def distinct(self, attributes=None, n_obs=None):
+    def distinct(self, attributes=None, n_obs=50):
         """Retrieves the distinct values for each attribute.
         By default, it retrieves all distinct values only for the categorical attributes in the dataframe.
         Parameters:
