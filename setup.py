@@ -21,6 +21,7 @@ setuptools.setup(
         'numpy>=1.18.4,<1.18.5',
         'shapely>=1.7.0,<1.7.1',
         'hdbscan>=0.8.26,<0.8.27',
+        'joblib>=0.17.0,<1.0.0',
         'scikit-learn>=0.23.1,<0.23.2',
         'matplotlib>=3.2.1,<3.2.2',
         'geovaex>=0.1.0',
