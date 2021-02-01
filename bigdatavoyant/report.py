@@ -11,6 +11,8 @@ def convert(o):
         return int(o)
     elif isinstance(o, numpy.float64) or isinstance(o, numpy.float32):
         return float(o)
+    elif isinstance(o, bytes):
+        return o.decode('utf-8')
     raise TypeError
 
 
