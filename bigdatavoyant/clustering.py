@@ -37,7 +37,7 @@ class Clustering(object):
         self.n_jobs = n_jobs
 
         # Prepare list of coordinates
-        data_arr = pois.geometry.get_coordinates()
+        data_arr = pois.geometry.get_coordinates().values()
 
         # Compute the clusters
         if alg == 'hdbscan':

@@ -332,9 +332,17 @@ class Profiler(object):
         if not self._has_geometry:
             warnings.warn('DataFrame is not spatial.')
             return None
-        pois = self.df.centroid()
         if maxpoints is not None and maxpoints < len(self.df):
-            pois = pois.sample(n=maxpoints)
+            pois = self.df.sample(n=maxpoints)
+        else:
+            pois = self.df.copy()
+        pois.constructive.centroid(inplace=True)
+        geom = pois.geometry.to_pygeos().values()
+        filt = pg.get_coordinate_dimension(geom)
+        pois.add_column('tmp', filt, dtype=int)
+        pois = pois[pois.tmp == 2]
+        pois.drop('tmp', inplace=True)
+        pois = pois.extract()
         return Clustering(pois, **kwargs)
 
     def report(self, **kwargs):
