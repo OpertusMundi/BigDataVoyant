@@ -211,7 +211,7 @@ class RasterData(object):
         width = self.width
         height = self.height
         bands = self.colorInterpretation()
-        return {'metadata': metadata, 'image_structure': image_structure, 'driver': driver, 'files': files, 'width': width, 'height': height, 'bands': bands}
+        return {'metadata': metadata, 'imageStructure': image_structure, 'driver': driver, 'files': files, 'width': width, 'height': height, 'bands': bands}
 
     def is_cog(self):
         """ Checks whether the raster is a cloud optimized GeoTiff.
