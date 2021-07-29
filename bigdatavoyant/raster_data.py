@@ -182,14 +182,18 @@ class RasterData(object):
         Returns:
             (object) The shapely geometry representing the MBR.
         """
+        import pyproj
         from shapely import geometry
+        from shapely.ops import transform
         dim = self._dimensions
         nw = geometry.Point(*self.affineTransform(0, 0))
         ne = geometry.Point(*self.affineTransform(dim[0], 0))
         se = geometry.Point(*self.affineTransform(dim[0], dim[1]))
         sw = geometry.Point(*self.affineTransform(0, dim[1]))
         mbr = geometry.Polygon([nw, ne, se, sw])
-        return mbr
+        from_crs = pyproj.crs.CRS.from_user_input(self.short_crs)
+        transformer = pyproj.Transformer.from_crs(from_crs, "EPSG:4326", always_xy=True)
+        return transform(transformer.transform, mbr)
 
     def resolution(self):
         """Calculates the x,y resolution of the raster.

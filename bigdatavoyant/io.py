@@ -36,7 +36,7 @@ def read_raster_file(file):
         (object) A datasource with the file's data.
     """
     try:
-        dataSource = gdal.Open(file)
+        dataSource = gdal.Open(file, gdal.GA_ReadOnly)
     except:
         print(sys.exc_info()[1])
     else:

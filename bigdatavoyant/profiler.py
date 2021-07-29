@@ -1,6 +1,8 @@
 import vaex
 from geovaex import GeoDataFrame
 import pygeos as pg
+import pyproj
+import numpy as np
 import pandas as pd
 import uuid
 import warnings
@@ -42,7 +44,12 @@ class Profiler(object):
         if not self._has_geometry:
             warnings.warn('DataFrame is not spatial.')
             return None
-        return pg.to_wkt(self.df.geometry.total_bounds())
+        total_bounds = self.df.geometry.total_bounds()
+        transformer = pyproj.Transformer.from_crs(self.crs, "EPSG:4326", always_xy=True)
+        coords = pg.get_coordinates(total_bounds)
+        new_coords = transformer.transform(coords[:, 0], coords[:, 1])
+        transformed = pg.set_coordinates(total_bounds, np.array(new_coords).T)
+        return pg.to_wkt(transformed)
 
     @property
     def featureCount(self):
@@ -70,7 +77,12 @@ class Profiler(object):
         if not self._has_geometry:
             warnings.warn('DataFrame is not spatial.')
             return None
-        return pg.to_wkt(self.df.geometry.convex_hull_all(chunksize=chunksize, max_workers=max_workers))
+        hull = self.df.geometry.convex_hull_all(chunksize=chunksize, max_workers=max_workers)
+        transformer = pyproj.Transformer.from_crs(self.crs, "EPSG:4326", always_xy=True)
+        coords = pg.get_coordinates(hull)
+        new_coords = transformer.transform(coords[:, 0], coords[:, 1])
+        transformed = pg.set_coordinates(hull, np.array(new_coords).T)
+        return pg.to_wkt(transformed)
 
     def thumbnail(self, file=None, maxpoints=100000, **kwargs):
         """Creates a thumbnail of the dataset.
@@ -383,7 +395,7 @@ class Profiler(object):
                 clusters_static = static_map.base64()
             except:
                 clusters_static = None
-            shapes = loads(shapes.to_json())
+            shapes = loads(shapes.to_crs('EPSG:4326').to_json())
             try:
                 heatmap = self.heatmap()
                 heatmap_static = heatmap.to_static_map(**kwargs).base64()
