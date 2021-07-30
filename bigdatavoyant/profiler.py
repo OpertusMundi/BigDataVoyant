@@ -419,6 +419,10 @@ class Profiler(object):
             clusters_static = None
             asset_type = 'tabular'
 
+        samples = []
+        for i in range(4):
+            samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
+
         report = {
             'assetType': asset_type,
             'mbr': mbr,
@@ -439,6 +443,7 @@ class Profiler(object):
             'heatmapStatic': heatmap_static,
             'clusters': shapes,
             'clustersStatic': clusters_static,
-            'statistics': self.statistics().to_dict()
+            'statistics': self.statistics().to_dict(),
+            'samples': samples
         }
         return Report(report)
