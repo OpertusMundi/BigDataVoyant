@@ -27,7 +27,7 @@ setuptools.setup(
         'geovaex>=0.1.0',
         'folium>=0.11.0,<0.11.1',
         'mapclassify>=2.2.0,<2.2.1',
-        'pygeos>=0.8.0,<0.9.0',
+        'pygeos>=0.8.0,<1.0.0',
         'vaex>=3.0.0,<3.0.1',
         'contextily>=1.0.0,<1.0.1',
         'netCDF4>=1.5.3,<1.5.4',
