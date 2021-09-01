@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="bigdatavoyant",
-    version="1.2.0",
+    version="1.2.4",
     author="Pantelis Mitropoulos",
     author_email="pmitropoulos@getmap.gr",
     description="Geodata profiling tool",
