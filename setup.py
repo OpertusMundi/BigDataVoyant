@@ -33,7 +33,8 @@ setuptools.setup(
         'netCDF4>=1.5.3,<1.5.4',
         'scipy>=1.5.0,<1.5.9',
         'geojsoncontour>=0.4.0,<0.5.0',
-        'descartes>=1.1.0,<1.1.1'
+        'descartes>=1.1.0,<1.1.1',
+        'simplejson>=3.17.5,<3.17.6'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

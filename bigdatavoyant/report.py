@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import numpy
 from dicttoxml import dicttoxml
 from xml.dom.minidom import parseString
@@ -37,7 +37,7 @@ class Report(dict):
         Returns:
             (string) json representation of the report.
         """
-        return json.dumps(self, indent=indent, default=convert)
+        return json.dumps(self, indent=indent, default=convert, ignore_nan=True)
 
     def to_xml(self):
         """Converts to xml.
