@@ -421,7 +421,7 @@ class Profiler(object):
 
         samples = []
         for i in range(4):
-            samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
+            samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True, array_type="list"))
 
         report = {
             'assetType': asset_type,

@@ -24,7 +24,7 @@ setuptools.setup(
         'joblib>=0.17.0,<1.0.0',
         'scikit-learn>=0.23.1,<0.23.2',
         'matplotlib>=3.2.1,<3.2.2',
-        'geovaex>=0.1.0',
+        'geovaex>=0.3.0',
         'folium>=0.11.0,<0.11.1',
         'mapclassify>=2.2.0,<2.2.1',
         'pygeos>=0.8.0,<1.0.0',
