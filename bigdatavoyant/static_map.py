@@ -4,6 +4,7 @@ import contextily as ctx
 import matplotlib.pyplot as plt
 from pathlib import Path
 from numpy import ndarray, generic, array
+import warnings
 
 class StaticMap(object):
     """Creation of static maps."""
@@ -109,41 +110,43 @@ class StaticMap(object):
         Returns:
             (obj) The matplotlib plot.
         """
-        cb = gdf.to_crs('EPSG:3857')
-        fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            cb = gdf.to_crs('EPSG:3857')
+            fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
 
-        minx, miny, maxx, maxy = self._getBorders(cb, self.aspect_ratio)
+            minx, miny, maxx, maxy = self._getBorders(cb, self.aspect_ratio)
 
-        ax.set_xlim(minx, maxx)
-        ax.set_ylim(miny, maxy)
+            ax.set_xlim(minx, maxx)
+            ax.set_ylim(miny, maxy)
 
-        plot_args = dict(
-            ax=ax,
-            legend=False,
-            edgecolor='black'
-        )
-        if weight is not None:
-            plot_args['column'] = weight
-            plot_args['cmap'] = cmap
+            plot_args = dict(
+                ax=ax,
+                legend=False,
+                edgecolor='black'
+            )
+            if weight is not None:
+                plot_args['column'] = weight
+                plot_args['cmap'] = cmap
 
-        cb.plot(**plot_args)
-        plt.xticks([], [])
-        plt.yticks([], [])
-        ctx.add_basemap(ax, source=self.basemap)
+            cb.plot(**plot_args)
+            plt.xticks([], [])
+            plt.yticks([], [])
+            ctx.add_basemap(ax, source=self.basemap)
 
-        if weight is not None:
-            vmin = cb['size'].min()
-            vmax = cb['size'].max()
+            if weight is not None:
+                vmin = cb['size'].min()
+                vmax = cb['size'].max()
 
-            cax = fig.add_axes([0.65, 0.95, 0.3, 0.01])
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
-            cbr = fig.colorbar(sm, cax=cax, orientation='horizontal')
-            if colorbar_label is not None:
-                cbr.set_label(colorbar_label, fontsize=fontsize)
-            cbr.ax.tick_params(labelsize=fontsize)
+                cax = fig.add_axes([0.65, 0.95, 0.3, 0.01])
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+                cbr = fig.colorbar(sm, cax=cax, orientation='horizontal')
+                if colorbar_label is not None:
+                    cbr.set_label(colorbar_label, fontsize=fontsize)
+                cbr.ax.tick_params(labelsize=fontsize)
 
-        self.map = fig
-        plt.close(fig)
+            self.map = fig
+            plt.close(fig)
         return fig
 
 
@@ -165,18 +168,20 @@ class StaticMap(object):
             geometry = pg.set_coordinates(geometry, array(new_coords).T)
         except:
             raise Exception('Transformation to EPSG:3857 failed.')
-        minx, miny, maxx, maxy = self._getBorders(new_coords, self.aspect_ratio)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            minx, miny, maxx, maxy = self._getBorders(new_coords, self.aspect_ratio)
 
-        fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
-        ax.set_xlim(minx, maxx)
-        ax.set_ylim(miny, maxy)
-        plt.xticks([], [])
-        plt.yticks([], [])
-        ax.fill(new_coords[0], new_coords[1], facecolor='#50505050', edgecolor='orange', linewidth=3)
-        ctx.add_basemap(ax, source=self.basemap)
+            fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
+            ax.set_xlim(minx, maxx)
+            ax.set_ylim(miny, maxy)
+            plt.xticks([], [])
+            plt.yticks([], [])
+            ax.fill(new_coords[0], new_coords[1], facecolor='#50505050', edgecolor='orange', linewidth=3)
+            ctx.add_basemap(ax, source=self.basemap)
 
-        self.map = fig
-        plt.close(fig)
+            self.map = fig
+            plt.close(fig)
         return fig
 
 
@@ -193,26 +198,28 @@ class StaticMap(object):
             epsg (int): The epsg code (default: 3857; other projections would possibly distort the tiles of the basemap).
         """
         import numpy as np
-        fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            fig, ax = plt.subplots(figsize = (self._width, self._height), dpi=self.dpi)
 
-        minx, miny, maxx, maxy = self._getBorders((x, y), self.aspect_ratio)
+            minx, miny, maxx, maxy = self._getBorders((x, y), self.aspect_ratio)
 
-        ax.set_xlim(minx, maxx)
-        ax.set_ylim(miny, maxy)
+            ax.set_xlim(minx, maxx)
+            ax.set_ylim(miny, maxy)
 
-        plt.xticks([], [])
-        plt.yticks([], [])
+            plt.xticks([], [])
+            plt.yticks([], [])
 
-        cset = ax.contourf(x, y, levels, number_of_levels, cmap=cmap, alpha=alpha, antialiased=True)
-        if epsg == 3857:
-            ctx.add_basemap(ax, source=self.basemap)
-        else:
-            ctx.add_basemap(ax, source=self.basemap, crs="epsg:{}".format(epsg))
-        for i in range(0, ignore_levels):
-            cset.collections[i].set_alpha(0.)
+            cset = ax.contourf(x, y, levels, number_of_levels, cmap=cmap, alpha=alpha, antialiased=True)
+            if epsg == 3857:
+                ctx.add_basemap(ax, source=self.basemap)
+            else:
+                ctx.add_basemap(ax, source=self.basemap, crs="epsg:{}".format(epsg))
+            for i in range(0, ignore_levels):
+                cset.collections[i].set_alpha(0.)
 
-        self.map = fig
-        plt.close(fig)
+            self.map = fig
+            plt.close(fig)
         return fig
 
 
