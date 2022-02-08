@@ -5,3 +5,4 @@ notebooks/data/local/
 *.egg-info
 build/
 schemata/
+.idea

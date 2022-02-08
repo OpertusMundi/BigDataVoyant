@@ -7,6 +7,9 @@ import pandas as pd
 import uuid
 import warnings
 from .distribution import Distribution
+from .profiler_v2_functions import is_phone, is_email, is_url, keywords_per_column, uniqueness, is_image_url, \
+    is_datetime, numerical_value_pattern, numerical_statistics, correlation_among_numerical_attributes, histogram, \
+    date_time_value_distribution
 from .report import Report
 from .plots import heatmap, map_choropleth
 from .clustering import Clustering
@@ -365,6 +368,124 @@ class Profiler(object):
         scores.sort_values(by='score', ascending=False, inplace=True)
         return scores
 
+    def value_pattern_type(self):
+        """ Check for value patterns like phone, email, url (image) and datetime
+
+        Returns:
+            (dict) column_name: value_pattern (if exists)
+        """
+        value_pattern_types = {}
+        df = self.df.copy().to_vaex_df()
+        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
+                                  if data_type.startswith('int') or data_type.startswith('float')]
+        for column in df.columns:
+            if is_phone(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains phone information'
+            elif is_email(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains email information'
+            elif is_url(df.columns.get(column)):
+                if is_image_url(df.columns.get(column)):
+                    value_pattern_types[column] = 'Contains image url information'
+                else:
+                    value_pattern_types[column] = 'Contains url information'
+            elif column not in numerical_column_names and is_datetime(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains datetime information'
+        return value_pattern_types
+
+    def keywords_per_column(self):
+        """ Get the top n keywords per categorical column
+
+        Returns:
+            (dict) column_name: keywords
+        """
+        column_keywords = {}
+        df = self.df.copy().to_vaex_df()
+        for column in self.categorical():  # get the categorical columns
+            column_keywords[column] = keywords_per_column(df.columns.get(column))
+        return column_keywords
+
+    def numerical_value_pattern(self):
+        """ Calculate the value pattern for numerical columns
+
+        Returns:
+            (dict) column_name: numerical value pattern
+        """
+        numerical_column_patterns = {}
+        df = self.df.copy().to_vaex_df()
+        for column in df.columns:
+            pattern = numerical_value_pattern(df.columns.get(column))
+            if pattern != '':
+                numerical_column_patterns[column] = pattern
+        return numerical_column_patterns
+
+    def numerical_statistics(self):
+        """ Calculate the numerical statistics per column
+
+        Returns:
+            (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
+        """
+        numerical_column_statistics = {}
+        df = self.df.copy().to_vaex_df()
+        data_type: str
+        for column_name, data_type in self.data_types().items():
+            if data_type.startswith('int') or data_type.startswith('float'):
+                numerical_column_statistics[column_name] = numerical_statistics(df.columns.get(column_name))
+        return numerical_column_statistics
+
+    def correlation_among_numerical_attributes(self):
+        """ Calculate the correlation matrix among all the numerical values
+
+        Returns:
+            (list) correlation matrix among all the numerical values
+        """
+        df = self.df.copy().to_vaex_df()
+        numerical_columns = [df.columns.get(column_name) for column_name, data_type in self.data_types().items()
+                             if data_type.startswith('int') or data_type.startswith('float')]
+        return correlation_among_numerical_attributes(numerical_columns)
+
+    def histogram(self):
+        """ Calculate the equi-width histogram of a numerical column
+
+        Returns:
+            (dict) column_name: bucket_counts,  bucket_boundaries
+        """
+        numerical_column_histograms = {}
+        df = self.df.copy().to_vaex_df()
+        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
+                                  if data_type.startswith('int') or data_type.startswith('float')]
+        for column_name in numerical_column_names:
+            numerical_column_histograms[column_name] = histogram(df.columns.get(column_name))
+        return numerical_column_histograms
+
+    def date_time_value_distribution(self):
+        """ Calculate the datetime value distribution in mm/yyyy intervals
+
+        Returns:
+            (dict) column_name: distribution dict -> mm/yyyy: count
+        """
+        column_date_time_value_distributions = {}
+        df = self.df.copy().to_vaex_df()
+        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
+                                  if data_type.startswith('int') or data_type.startswith('float')]
+        for column in df.columns:
+            if column not in numerical_column_names:
+                distribution = date_time_value_distribution(df.columns.get(column))
+                if distribution:
+                    column_date_time_value_distributions[column] = distribution
+        return column_date_time_value_distributions
+
+    def uniqueness(self):
+        """ Calculate the uniqueness factor of a column
+
+        Returns:
+            (dict) column_name: uniqueness metric (max 1.0)
+        """
+        column_uniqueness = {}
+        df = self.df.copy().to_vaex_df()
+        for column in df.columns:
+            column_uniqueness[column] = uniqueness(df.columns.get(column))
+        return column_uniqueness
+
     def report(self, **kwargs):
         """Creates a report with a collection of metadata.
         Parameters:
@@ -460,6 +581,14 @@ class Profiler(object):
             'clustersStatic': clusters_static,
             'statistics': self.statistics().to_dict(),
             'samples': samples,
+            'valuePatternTypes': self.value_pattern_type(),
+            'keywords': self.keywords_per_column(),
+            'numericalValuePatterns': self.numerical_value_pattern(),
+            'numericalStatistics': self.numerical_statistics(),
+            'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
+            'histogram': self.histogram(),
+            'dateTimeValueDistribution': self.date_time_value_distribution(),
+            'uniqueness': self.uniqueness(),
             'scores': scores
         }
         return Report(report)
