@@ -2,3 +2,6 @@ __pycache__/
 notebooks/_*
 notebooks/.ipynb_checkpoints/
 notebooks/data/local/
+*.egg-info
+build/
+schemata/
