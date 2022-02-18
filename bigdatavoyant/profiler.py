@@ -1,3 +1,5 @@
+import math
+
 import vaex
 from geovaex import GeoDataFrame
 import pygeos as pg
@@ -410,18 +412,23 @@ class Profiler(object):
                 numerical_column_patterns[column] = pattern
         return numerical_column_patterns
 
-    def numerical_statistics(self):
+    def quantile_numerical_statistics(self):
         """ Calculate the numerical statistics per column
 
         Returns:
             (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
         """
+        quantiles = self.quantiles()
         numerical_column_statistics = {}
-        df = self.df.copy().to_vaex_df()
-        data_type: str
-        for column_name, data_type in self.data_types().items():
-            if data_type.startswith('int') or data_type.startswith('float'):
-                numerical_column_statistics[column_name] = numerical_statistics(df.columns.get(column_name))
+        df = self.df.copy().to_pandas_df()
+        for numerical_column in quantiles.index:
+            numerical_column_statistics[numerical_column] = {}
+            quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
+            quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
+            for i in range(len(quantile_ranges)-1):
+                q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
+                stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
+                numerical_column_statistics[numerical_column][q_id] = stats
         return numerical_column_statistics
 
     def correlation_among_numerical_attributes(self):
@@ -431,9 +438,10 @@ class Profiler(object):
             (list) correlation matrix among all the numerical values
         """
         df = self.df.copy().to_vaex_df()
-        numerical_columns = [df.columns.get(column_name) for column_name, data_type in self.data_types().items()
-                             if data_type.startswith('int') or data_type.startswith('float')]
-        return correlation_among_numerical_attributes(numerical_columns)
+        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
+                                  if data_type.startswith('int') or data_type.startswith('float')]
+        numerical_columns = [df.columns.get(column_name) for column_name in numerical_column_names]
+        return {'columns': numerical_column_names, 'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
 
     def histogram(self):
         """ Calculate the equi-width histogram of a numerical column
@@ -572,7 +580,7 @@ class Profiler(object):
             'valuePatternTypes': self.value_pattern_type(),
             'keywords': self.keywords_per_column(),
             'numericalValuePatterns': self.numerical_value_pattern(),
-            'numericalStatistics': self.numerical_statistics(),
+            'numericalStatistics': self.quantile_numerical_statistics(),
             'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),

@@ -12,7 +12,7 @@ import re
 from dateutil.parser import parse
 
 
-def is_phone(column, top_rows_to_search=1000):
+def is_phone(column, top_rows_to_search=10000):
     row_counter = 0
     for row in column:
         try:
@@ -28,7 +28,7 @@ def is_phone(column, top_rows_to_search=1000):
     return False
 
 
-def is_email(column, top_rows_to_search=1000):
+def is_email(column, top_rows_to_search=10000):
     regex = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
         r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-\011\013\014\016-\177])*"'
@@ -43,7 +43,7 @@ def is_email(column, top_rows_to_search=1000):
     return False
 
 
-def is_url(column, top_rows_to_search=1000):
+def is_url(column, top_rows_to_search=10000):
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
@@ -61,9 +61,7 @@ def is_url(column, top_rows_to_search=1000):
     return False
 
 
-def is_image_url(column, top_rows_to_search=1000):
-    if not is_url(column, top_rows_to_search=top_rows_to_search):
-        return False
+def is_image_url(column, top_rows_to_search=10000):
     image_file_endings = ('.apng', '.avif', '.gif', '.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp', '.png', '.svg',
                           '.webp', '.bmp', '.ico', '.cur', '.tif', '.tiff')
     row_counter = 0
@@ -98,7 +96,9 @@ def keywords_per_column(column, top_n=3):
     for row in column:
         if isinstance(row, str):
             row = row.translate(str.maketrans('', '', string.punctuation)).split(" ")
-            frequencies = {word: frequencies.get(word, 0) + 1 for word in row if row}
+            for word in row:
+                if word:
+                    frequencies[word] = frequencies.get(word, 0) + 1
             frequencies = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
             top_n_items = list(islice(frequencies.items(), top_n))
     return top_n_items
@@ -165,7 +165,7 @@ def numerical_statistics(column):
 
 
 def correlation_among_numerical_attributes(numerical_columns: typing.List[typing.List]):
-    return np.corrcoef(numerical_columns)
+    return np.corrcoef(numerical_columns).tolist()
 
 
 def histogram(numerical_column):
@@ -189,6 +189,9 @@ def date_time_value_distribution(column):
 
 
 def uniqueness(column):
+    column = [i for i in column if i]
     total = len(column)
-    n_unique = len(np.unique([i for i in column if i]))
+    if total == 0:
+        return None
+    n_unique = len(np.unique(column))
     return n_unique / total
