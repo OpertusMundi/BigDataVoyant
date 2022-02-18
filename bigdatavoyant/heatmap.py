@@ -18,10 +18,12 @@ class Heatmap(object):
     scotts method as implemented in scipy for weighted data.
     """
 
-    def __init__(self, df, bw_method=None, weights=None, alpha=0.4, grid=100, number_of_levels=100, ignore_levels=1, cmap=None, epsg=3857):
+    def __init__(self, df, bw_method=None, weights=None, alpha=0.4, grid=100, number_of_levels=100, ignore_levels=1, cmap=None, epsg=3857, padding=5000.):
         """Computes the KDE for a given dataset and creates the heatmap.
+
         Parameters:
             df (object): A dataframe with geometries and optionally weights.
+            bw_method (string, optional): The method used to calculate the estimator bandwidth. This can be ‘scott’, ‘silverman’, a scalar constant or a callable. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.html
             weights (string): The attribute name of the weights in the dataframe.
             alpha (float): The alpha blending value, between 0 (transparent)
                 and 1 (opaque) (default: 0.4).
@@ -32,6 +34,7 @@ class Heatmap(object):
                 The colormap maps the level values to colors.
                 (default: A custom colormap blue-green-red weighted to the right.)
             epsg (int): The EPSG code to reproject the geometries (default: 3857).
+            padding (float, optional): Padding around the MBR in meters.
         """
         self.df = df
         self.weights = weights
@@ -45,8 +48,8 @@ class Heatmap(object):
         if epsg is not None:
             pois.geometry.to_crs(epsg)
         data = pg.get_coordinates(pois.geometry.to_pygeos().values())
-        xmin, ymin = data.min(axis=0)
-        xmax, ymax = data.max(axis=0)
+        xmin, ymin = data.min(axis=0) - padding
+        xmax, ymax = data.max(axis=0) + padding
 
         m1, m2 = data.T
         x, y = np.mgrid[xmin:xmax:grid*1j, ymin:ymax:grid*1j]

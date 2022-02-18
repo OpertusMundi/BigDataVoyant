@@ -16,6 +16,8 @@ from .report import Report
 from .plots import heatmap, map_choropleth
 from .clustering import Clustering
 from .heatmap import Heatmap
+from .aux.schema import get_similarity_scores
+import os
 
 def custom_formatwarning(msg, *args, **kwargs):
     """Ignore everything except the message."""
@@ -362,6 +364,12 @@ class Profiler(object):
         pois = pois.extract()
         return Clustering(pois, **kwargs)
 
+    def schema_similarities(self, definition_path):
+        import pandas as pd
+        scores = pd.DataFrame([{'name': name, 'score': score} for name, score in get_similarity_scores(self.df, definition_path)])
+        scores.sort_values(by='score', ascending=False, inplace=True)
+        return scores
+
     def value_pattern_type(self):
         """ Check for value patterns like phone, email, url (image) and datetime
 
@@ -496,6 +504,8 @@ class Profiler(object):
         from .static_map import StaticMap
         from json import loads
 
+        schema_defs_path = kwargs.pop('schemaDefs', None)
+
         if self._has_geometry:
             static_map = StaticMap(**kwargs)
 
@@ -548,6 +558,8 @@ class Profiler(object):
             clusters_static = None
             asset_type = 'tabular'
 
+        scores = self.schema_similarities(schema_defs_path)[0:5] if schema_defs_path is not None and os.path.isdir(schema_defs_path) else None
+
         samples = []
         for i in range(4):
             if self._has_geometry:
@@ -584,6 +596,7 @@ class Profiler(object):
             'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
-            'uniqueness': self.uniqueness()
+            'uniqueness': self.uniqueness(),
+            'scores': scores
         }
         return Report(report)
