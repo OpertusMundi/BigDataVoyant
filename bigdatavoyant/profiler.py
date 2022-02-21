@@ -235,25 +235,17 @@ class Profiler(object):
             raise Exception('ERROR: Method %s not supported' % (method))
         return sample
 
-    def quantiles(self):
-        """Calculates the 5, 25, 50, 75, 95 quantiles.
+    def quantiles(self, percentiles=[5, 25, 50, 75, 95]):
+        """Calculates the given percentiles.
+        Parameters:
+            percentiles (list): A list of percentile values [default: [5, 25, 50, 75, 95]].
         Returns:
             (object) A pandas dataframe with the calculated values.
         """
-        columns=[5, 25, 50, 75, 95]
-        df = pd.DataFrame(columns=columns)
-        for col in self.df.get_column_names(virtual=False):
-            quantiles = []
-            try:
-                for percentage in columns:
-                    percentage = float(percentage)
-                    quantiles.append(self.df.percentile_approx(col, percentage=percentage))
-            except:
-                pass
-            else:
-                row = pd.DataFrame([quantiles], columns=columns, index=[col])
-                df = df.append(row)
-        return df
+        numerical_columns = [col for col in self.df.get_column_names(virtual=False) if np.issubdtype(self.df.data_type(col), np.number)]
+        get_percentile = lambda percentage: \
+            np.array([self.df.min(col)[()] if percentage == 0 else (self.df.max(col)[()] if percentage == 100 else self.df.percentile_approx(col, percentage=percentage)) for col in numerical_columns])
+        return pd.DataFrame({percentage: get_percentile(percentage) for percentage in percentiles}, index=numerical_columns)
 
     def distinct(self, attributes=None, n_obs=50):
         """Retrieves the distinct values for each attribute.
@@ -420,13 +412,17 @@ class Profiler(object):
                 numerical_column_patterns[column] = pattern
         return numerical_column_patterns
 
-    def quantile_numerical_statistics(self):
+    def quantile_numerical_statistics(self, n=4):
         """ Calculate the numerical statistics per column
+
+        Parameters:
+            n: Number of quantiles [default: 4]
 
         Returns:
             (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
         """
-        quantiles = self.quantiles()
+        percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
+        quantiles = self.quantiles(percentiles=percentiles)
         numerical_column_statistics = {}
         df = self.df.copy().to_pandas_df()
         for numerical_column in quantiles.index:
