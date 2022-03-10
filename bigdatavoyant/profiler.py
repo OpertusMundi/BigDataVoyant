@@ -43,6 +43,9 @@ class Profiler(object):
         self._categorical = None
         self._has_geometry = isinstance(df, GeoDataFrame)
 
+    def _numerical_columns(self):
+        return [col for col in self.df.get_column_names(virtual=False) if np.issubdtype(self.df.data_type(col), np.number)]
+
     def mbr(self):
         """Returns the Minimum Bounding Rectangle.
         Returns:
@@ -160,6 +163,7 @@ class Profiler(object):
         Returns:
             (list): A list of the categorical attributes.
         """
+        # TODO: Detect spaces
         if self._categorical is not None:
             return self._categorical
         df = self.df.to_vaex_df() if isinstance(self.df, GeoDataFrame) else self.df
@@ -242,7 +246,7 @@ class Profiler(object):
         Returns:
             (object) A pandas dataframe with the calculated values.
         """
-        numerical_columns = [col for col in self.df.get_column_names(virtual=False) if np.issubdtype(self.df.data_type(col), np.number)]
+        numerical_columns = self._numerical_columns()
         get_percentile = lambda percentage: \
             np.array([self.df.min(col)[()] if percentage == 0 else (self.df.max(col)[()] if percentage == 100 else self.df.percentile_approx(col, percentage=percentage)) for col in numerical_columns])
         return pd.DataFrame({percentage: get_percentile(percentage) for percentage in percentiles}, index=numerical_columns)
@@ -369,7 +373,7 @@ class Profiler(object):
             (dict) column_name: value_pattern (if exists)
         """
         value_pattern_types = {}
-        df = self.df.copy().to_vaex_df()
+        df = self.df.copy()
         numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
                                   if data_type.startswith('int') or data_type.startswith('float')]
         for column in df.columns:
@@ -393,7 +397,7 @@ class Profiler(object):
             (dict) column_name: keywords
         """
         column_keywords = {}
-        df = self.df.copy().to_vaex_df()
+        df = self.df.copy()
         for column in self.categorical():  # get the categorical columns
             column_keywords[column] = keywords_per_column(df.columns.get(column))
         return column_keywords
@@ -405,14 +409,14 @@ class Profiler(object):
             (dict) column_name: numerical value pattern
         """
         numerical_column_patterns = {}
-        df = self.df.copy().to_vaex_df()
+        df = self.df.copy()
         for column in df.columns:
             pattern = numerical_value_pattern(df.columns.get(column))
             if pattern != '':
                 numerical_column_patterns[column] = pattern
         return numerical_column_patterns
 
-    def quantile_numerical_statistics(self, n=4):
+    def ntile_numerical_statistics(self, n=4):
         """ Calculate the numerical statistics per column
 
         Parameters:
@@ -426,6 +430,8 @@ class Profiler(object):
         numerical_column_statistics = {}
         df = self.df.copy().to_pandas_df()
         for numerical_column in quantiles.index:
+            if len(quantiles.loc[numerical_column].dropna()) == 0:
+                continue
             numerical_column_statistics[numerical_column] = {}
             quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
             quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
@@ -435,15 +441,34 @@ class Profiler(object):
                 numerical_column_statistics[numerical_column][q_id] = stats
         return numerical_column_statistics
 
+        # # VAEX impementation (without peak-to-peak)
+        # import scipy
+        # df = self.df.copy()
+        # numerical_columns = self._numerical_columns()
+        # perc = np.linspace(0, 100, n+1).astype(int)
+        # percentile = lambda col, percentage: \
+        #     df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
+        # stats = {}
+        # for col in numerical_columns:
+        #     iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
+        #     stats[col] = {f'{perc[i]}-{perc[i+1]}': {
+        #         'median': iq[i].median_approx(col).item(),
+        #         'mean': iq[i].mean(col).item(),
+        #         'variance': iq[i].var(col).item(),
+        #         'std': iq[i].std(col).item(),
+        #         'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
+        #     } for i in range(0, len(perc) - 1)}
+
+        # return stats
+
     def correlation_among_numerical_attributes(self):
         """ Calculate the correlation matrix among all the numerical values
 
         Returns:
             (list) correlation matrix among all the numerical values
         """
-        df = self.df.copy().to_vaex_df()
-        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
-                                  if data_type.startswith('int') or data_type.startswith('float')]
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
         numerical_columns = [df.columns.get(column_name) for column_name in numerical_column_names]
         return {'columns': numerical_column_names, 'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
 
@@ -454,9 +479,8 @@ class Profiler(object):
             (dict) column_name: bucket_counts,  bucket_boundaries
         """
         numerical_column_histograms = {}
-        df = self.df.copy().to_vaex_df()
-        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
-                                  if data_type.startswith('int') or data_type.startswith('float')]
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
         for column_name in numerical_column_names:
             numerical_column_histograms[column_name] = histogram(df.columns.get(column_name))
         return numerical_column_histograms
@@ -468,9 +492,8 @@ class Profiler(object):
             (dict) column_name: distribution dict -> mm/yyyy: count
         """
         column_date_time_value_distributions = {}
-        df = self.df.copy().to_vaex_df()
-        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
-                                  if data_type.startswith('int') or data_type.startswith('float')]
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
         for column in df.columns:
             if column not in numerical_column_names:
                 distribution = date_time_value_distribution(df.columns.get(column))
@@ -485,14 +508,15 @@ class Profiler(object):
             (dict) column_name: uniqueness metric (max 1.0)
         """
         column_uniqueness = {}
-        df = self.df.copy().to_vaex_df()
+        df = self.df.copy()
         for column in df.columns:
             column_uniqueness[column] = uniqueness(df.columns.get(column))
         return column_uniqueness
 
-    def report(self, **kwargs):
+    def report(self, schema_defs_path: str=None, **kwargs):
         """Creates a report with a collection of metadata.
         Parameters:
+            schema_defs_path (str, optional): Path of schema definitions
             **kwargs: See StaticMap class
         Returns:
             (object) A report object.
@@ -530,6 +554,7 @@ class Profiler(object):
                 clusters_static = static_map.base64()
             except:
                 clusters_static = None
+            clusters_info = clusters.info
             shapes = loads(shapes.to_crs('EPSG:4326').to_json())
             try:
                 heatmap = self.heatmap()
@@ -550,6 +575,7 @@ class Profiler(object):
             short_crs = None
             heatmap_geojson = None
             heatmap_static = None
+            clusters_info = None
             shapes = None
             clusters_static = None
             asset_type = 'tabular'
@@ -582,13 +608,14 @@ class Profiler(object):
             'heatmap': heatmap_geojson,
             'heatmapStatic': heatmap_static,
             'clusters': shapes,
+            'clustersInfo': clusters_info,
             'clustersStatic': clusters_static,
             'statistics': self.statistics().to_dict(),
             'samples': samples,
             'valuePatternTypes': self.value_pattern_type(),
             'keywords': self.keywords_per_column(),
             'numericalValuePatterns': self.numerical_value_pattern(),
-            'numericalStatistics': self.quantile_numerical_statistics(),
+            'numericalStatistics': self.ntile_numerical_statistics(),
             'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
