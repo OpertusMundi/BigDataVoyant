@@ -84,6 +84,8 @@ def is_datetime(column, top_rows_to_search=1000):
                 return True
         except ValueError:
             return False
+        except OverflowError:
+            return False;
         row_counter += 1
         if row_counter == top_rows_to_search:
             return False
