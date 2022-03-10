@@ -1,6 +1,7 @@
 from collections import Counter
 import os
 import math
+import warnings
 
 def counter_cosine_similarity(c1, c2):
     """Calculates the cosine distance between two lists.
@@ -59,7 +60,7 @@ def _read_yaml(file):
         try:
             content = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            warnings.warn('Error while reading YAML file.')
+            warnings.warn('Error while reading YAML file {}.'.format(file))
             return None
     return content
 
