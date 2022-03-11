@@ -425,41 +425,41 @@ class Profiler(object):
         Returns:
             (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
         """
-        percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
-        quantiles = self.quantiles(percentiles=percentiles)
-        numerical_column_statistics = {}
-        df = self.df.copy().to_pandas_df()
-        for numerical_column in quantiles.index:
-            if len(quantiles.loc[numerical_column].dropna()) == 0:
-                continue
-            numerical_column_statistics[numerical_column] = {}
-            quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
-            quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
-            for i in range(len(quantile_ranges)-1):
-                q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
-                stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
-                numerical_column_statistics[numerical_column][q_id] = stats
-        return numerical_column_statistics
+        # percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
+        # quantiles = self.quantiles(percentiles=percentiles)
+        # numerical_column_statistics = {}
+        # df = self.df.copy().to_pandas_df()
+        # for numerical_column in quantiles.index:
+        #     if len(quantiles.loc[numerical_column].dropna()) == 0:
+        #         continue
+        #     numerical_column_statistics[numerical_column] = {}
+        #     quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
+        #     quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
+        #     for i in range(len(quantile_ranges)-1):
+        #         q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
+        #         stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
+        #         numerical_column_statistics[numerical_column][q_id] = stats
+        # return numerical_column_statistics
 
-        # # VAEX impementation (without peak-to-peak)
-        # import scipy
-        # df = self.df.copy()
-        # numerical_columns = self._numerical_columns()
-        # perc = np.linspace(0, 100, n+1).astype(int)
-        # percentile = lambda col, percentage: \
-        #     df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
-        # stats = {}
-        # for col in numerical_columns:
-        #     iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
-        #     stats[col] = {f'{perc[i]}-{perc[i+1]}': {
-        #         'median': iq[i].median_approx(col).item(),
-        #         'mean': iq[i].mean(col).item(),
-        #         'variance': iq[i].var(col).item(),
-        #         'std': iq[i].std(col).item(),
-        #         'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
-        #     } for i in range(0, len(perc) - 1)}
+        # VAEX impementation (without peak-to-peak)
+        import scipy
+        df = self.df.copy()
+        numerical_columns = self._numerical_columns()
+        perc = np.linspace(0, 100, n+1).astype(int)
+        percentile = lambda col, percentage: \
+            df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
+        stats = {}
+        for col in numerical_columns:
+            iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
+            stats[col] = {f'{perc[i]}-{perc[i+1]}': {
+                'median': iq[i].median_approx(col).item(),
+                'mean': iq[i].mean(col).item(),
+                'variance': iq[i].var(col).item(),
+                'std': iq[i].std(col).item(),
+                'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
+            } for i in range(0, len(perc) - 1)}
 
-        # return stats
+        return stats
 
     def correlation_among_numerical_attributes(self):
         """ Calculate the correlation matrix among all the numerical values
@@ -513,18 +513,16 @@ class Profiler(object):
             column_uniqueness[column] = uniqueness(df.columns.get(column))
         return column_uniqueness
 
-    def report(self, schema_defs_path: str=None, **kwargs):
+    def report(self, schemaDefs: str=None, **kwargs):
         """Creates a report with a collection of metadata.
         Parameters:
-            schema_defs_path (str, optional): Path of schema definitions
+            schemaDefs (str, optional): Path of schema definitions
             **kwargs: See StaticMap class
         Returns:
             (object) A report object.
         """
         from .static_map import StaticMap
         from json import loads
-
-        schema_defs_path = kwargs.pop('schemaDefs', None)
 
         if self._has_geometry:
             static_map = StaticMap(**kwargs)
@@ -580,14 +578,15 @@ class Profiler(object):
             clusters_static = None
             asset_type = 'tabular'
 
-        scores = self.schema_similarities(schema_defs_path)[0:5] if schema_defs_path is not None and os.path.isdir(schema_defs_path) else None
+        scores = self.schema_similarities(schemaDefs)[0:5] if schemaDefs is not None and os.path.isdir(schemaDefs) else None
 
         samples = []
-        for i in range(4):
-            if self._has_geometry:
-                samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True, array_type="list"))
-            else:
-                samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
+        if len(self.df) > 10:
+            for i in range(4):
+                if self._has_geometry:
+                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True, array_type="list"))
+                else:
+                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
 
         report = {
             'assetType': asset_type,
@@ -620,6 +619,6 @@ class Profiler(object):
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
             'uniqueness': self.uniqueness(),
-            'scores': scores
+            'scores': scores.to_dict(orient='records'),
         }
         return Report(report)
