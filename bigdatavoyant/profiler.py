@@ -578,7 +578,7 @@ class Profiler(object):
             clusters_static = None
             asset_type = 'tabular'
 
-        scores = self.schema_similarities(schemaDefs)[0:5] if schemaDefs is not None and os.path.isdir(schemaDefs) else None
+        scores = self.schema_similarities(schemaDefs)[0:5].to_dict(orient='records') if schemaDefs is not None and os.path.isdir(schemaDefs) else None
 
         samples = []
         if len(self.df) > 10:
@@ -619,6 +619,6 @@ class Profiler(object):
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
             'uniqueness': self.uniqueness(),
-            'scores': scores.to_dict(orient='records'),
+            'scores': scores,
         }
         return Report(report)
