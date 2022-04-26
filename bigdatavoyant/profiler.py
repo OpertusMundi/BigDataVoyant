@@ -377,12 +377,14 @@ class Profiler(object):
             except:
                 mbr_static = None
 
-            convex_hull = self.convex_hull()
-            try:
-                static_map.addWKT(convex_hull, self.short_crs)
-                convex_hull_static = static_map.base64()
-            except Exception as e:
-                convex_hull_static = None
+            convex_hull = None
+            convex_hull_static = None
+            # convex_hull = self.convex_hull()
+            # try:
+                # static_map.addWKT(convex_hull, self.short_crs)
+                # convex_hull_static = static_map.base64()
+            # except Exception as e:
+            #     convex_hull_static = None
 
             try:
                 thumbnail = self.thumbnail(**kwargs)
