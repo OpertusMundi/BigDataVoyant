@@ -422,11 +422,13 @@ class Profiler(object):
             asset_type = 'tabular'
 
         samples = []
-        for i in range(4):
-            if self._has_geometry:
-                samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True, array_type="list"))
-            else:
-                samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
+        if self.featureCount >= 100:
+            for _ in range(4):
+                if self._has_geometry:
+                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True,
+                                                                                      array_type="list"))
+                else:
+                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
 
         report = {
             'assetType': asset_type,
