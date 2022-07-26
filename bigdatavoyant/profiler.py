@@ -623,6 +623,6 @@ class Profiler(object):
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
             'uniqueness': self.uniqueness(),
-            'scores': scores.to_dict(orient='records'),
+            'scores': None if scores is None else scores.to_dict(orient='records'),
         }
         return Report(report)
