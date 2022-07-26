@@ -92,11 +92,13 @@ class StaticMap(object):
         Parameters:
             fig (object): The matplotlib figure.
         """
-        dummy = plt.figure()
-        new_manager = dummy.canvas.manager
-        new_manager.canvas.figure = fig
-        fig.set_canvas(new_manager.canvas)
-        plt.tight_layout()
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', '.*tight_layout.*')
+            dummy = plt.figure()
+            new_manager = dummy.canvas.manager
+            new_manager.canvas.figure = fig
+            fig.set_canvas(new_manager.canvas)
+            plt.tight_layout()
 
 
     def addGeometries(self, gdf, weight=None, cmap='YlOrRd', colorbar_label=None, fontsize=18):
@@ -228,14 +230,16 @@ class StaticMap(object):
         Returns:
             (string) The base64 encoded png map.
         """
-        fig = self.map
-        self._openFigure(fig)
-        img = BytesIO()
-        plt.tight_layout()
-        plt.savefig(img, format='png')
-        img.seek(0)
-        base64_img = base64.b64encode(img.read()).decode('utf8')
-        plt.close(fig)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', '.*tight_layout.*')
+            fig = self.map
+            self._openFigure(fig)
+            img = BytesIO()
+            plt.tight_layout()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            base64_img = base64.b64encode(img.read()).decode('utf8')
+            plt.close(fig)
 
         return base64_img
 
@@ -247,15 +251,17 @@ class StaticMap(object):
             **kwargs: Keyword arguments for matplotlib.pyplot.savefig
         """
         from pathlib import Path
-        fig = self.map
-        self._openFigure(fig)
-        plt.tight_layout()
-        try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', '.*tight_layout.*')
+            fig = self.map
+            self._openFigure(fig)
+            plt.tight_layout()
+            try:
+                plt.savefig(file, **kwargs)
+                print("Wrote file %s, %d bytes." % (file, Path(file).stat().st_size))
+            except:
+                raise Exception('ERROR: Could not write to filesystem.')
             plt.savefig(file, **kwargs)
-            print("Wrote file %s, %d bytes." % (file, Path(file).stat().st_size))
-        except:
-            raise Exception('ERROR: Could not write to filesystem.')
-        plt.savefig(file, **kwargs)
 
 
     def show(self):

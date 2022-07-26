@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="bigdatavoyant",
-    version="1.2.7",
+    version="2.0.0",
     author="Pantelis Mitropoulos",
     author_email="pmitropoulos@getmap.gr",
     description="Geodata profiling tool",
@@ -18,7 +18,7 @@ setuptools.setup(
         'dicttoxml>=1.7.4,<1.8.0',
         'pandas>=1.0.3,<1.0.4',
         'geopandas>=0.7.0,<0.7.1',
-        'numpy>=1.18.4,<1.18.5',
+        'numpy>=1.19.5,<1.19.6',
         'shapely>=1.7.0,<1.7.1',
         'hdbscan>=0.8.26,<0.8.27',
         'joblib>=0.17.0,<1.0.0',
@@ -34,7 +34,8 @@ setuptools.setup(
         'scipy>=1.5.0,<1.5.9',
         'geojsoncontour>=0.4.0,<0.5.0',
         'descartes>=1.1.0,<1.1.1',
-        'simplejson>=3.17.5,<3.17.6'
+        'simplejson>=3.17.5,<3.17.6',
+        'phonenumbers>=8.12.41,<8.13'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

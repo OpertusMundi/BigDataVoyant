@@ -1,3 +1,5 @@
+import math
+
 import vaex
 from geovaex import GeoDataFrame
 import pygeos as pg
@@ -7,10 +9,15 @@ import pandas as pd
 import uuid
 import warnings
 from .distribution import Distribution
+from .profiler_v2_functions import is_phone, is_email, is_url, keywords_per_column, uniqueness, is_image_url, \
+    is_datetime, numerical_value_pattern, numerical_statistics, correlation_among_numerical_attributes, histogram, \
+    date_time_value_distribution
 from .report import Report
 from .plots import heatmap, map_choropleth
 from .clustering import Clustering
 from .heatmap import Heatmap
+from .aux.schema import get_similarity_scores
+import os
 
 def custom_formatwarning(msg, *args, **kwargs):
     """Ignore everything except the message."""
@@ -35,6 +42,9 @@ class Profiler(object):
         self._count = None
         self._categorical = None
         self._has_geometry = isinstance(df, GeoDataFrame)
+
+    def _numerical_columns(self):
+        return [col for col in self.df.get_column_names(virtual=False) if np.issubdtype(self.df.data_type(col), np.number)]
 
     def mbr(self):
         """Returns the Minimum Bounding Rectangle.
@@ -153,6 +163,7 @@ class Profiler(object):
         Returns:
             (list): A list of the categorical attributes.
         """
+        # TODO: Detect spaces
         if self._categorical is not None:
             return self._categorical
         df = self.df.to_vaex_df() if isinstance(self.df, GeoDataFrame) else self.df
@@ -228,25 +239,17 @@ class Profiler(object):
             raise Exception('ERROR: Method %s not supported' % (method))
         return sample
 
-    def quantiles(self):
-        """Calculates the 5, 25, 50, 75, 95 quantiles.
+    def quantiles(self, percentiles=[5, 25, 50, 75, 95]):
+        """Calculates the given percentiles.
+        Parameters:
+            percentiles (list): A list of percentile values [default: [5, 25, 50, 75, 95]].
         Returns:
             (object) A pandas dataframe with the calculated values.
         """
-        columns=[5, 25, 50, 75, 95]
-        df = pd.DataFrame(columns=columns)
-        for col in self.df.get_column_names(virtual=False):
-            quantiles = []
-            try:
-                for percentage in columns:
-                    percentage = float(percentage)
-                    quantiles.append(self.df.percentile_approx(col, percentage=percentage))
-            except:
-                pass
-            else:
-                row = pd.DataFrame([quantiles], columns=columns, index=[col])
-                df = df.append(row)
-        return df
+        numerical_columns = self._numerical_columns()
+        get_percentile = lambda percentage: \
+            np.array([self.df.min(col)[()] if percentage == 0 else (self.df.max(col)[()] if percentage == 100 else self.df.percentile_approx(col, percentage=percentage)) for col in numerical_columns])
+        return pd.DataFrame({percentage: get_percentile(percentage) for percentage in percentiles}, index=numerical_columns)
 
     def distinct(self, attributes=None, n_obs=50):
         """Retrieves the distinct values for each attribute.
@@ -357,9 +360,163 @@ class Profiler(object):
         pois = pois.extract()
         return Clustering(pois, **kwargs)
 
-    def report(self, **kwargs):
+    def schema_similarities(self, definition_path):
+        import pandas as pd
+        scores = pd.DataFrame([{'name': name, 'score': score} for name, score in get_similarity_scores(self.df, definition_path)])
+        scores.sort_values(by='score', ascending=False, inplace=True)
+        return scores
+
+    def value_pattern_type(self):
+        """ Check for value patterns like phone, email, url (image) and datetime
+
+        Returns:
+            (dict) column_name: value_pattern (if exists)
+        """
+        value_pattern_types = {}
+        df = self.df.copy()
+        numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
+                                  if data_type.startswith('int') or data_type.startswith('float')]
+        for column in df.columns:
+            if is_phone(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains phone information'
+            elif is_email(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains email information'
+            elif is_url(df.columns.get(column)):
+                if is_image_url(df.columns.get(column)):
+                    value_pattern_types[column] = 'Contains image url information'
+                else:
+                    value_pattern_types[column] = 'Contains url information'
+            elif column not in numerical_column_names and is_datetime(df.columns.get(column)):
+                value_pattern_types[column] = 'Contains datetime information'
+        return value_pattern_types
+
+    def keywords_per_column(self):
+        """ Get the top n keywords per categorical column
+
+        Returns:
+            (dict) column_name: keywords
+        """
+        column_keywords = {}
+        df = self.df.copy()
+        for column in self.categorical():  # get the categorical columns
+            column_keywords[column] = keywords_per_column(df.columns.get(column))
+        return column_keywords
+
+    def numerical_value_pattern(self):
+        """ Calculate the value pattern for numerical columns
+
+        Returns:
+            (dict) column_name: numerical value pattern
+        """
+        numerical_column_patterns = {}
+        df = self.df.copy()
+        for column in df.columns:
+            pattern = numerical_value_pattern(df.columns.get(column))
+            if pattern != '':
+                numerical_column_patterns[column] = pattern
+        return numerical_column_patterns
+
+    def ntile_numerical_statistics(self, n=4):
+        """ Calculate the numerical statistics per column
+
+        Parameters:
+            n: Number of quantiles [default: 4]
+
+        Returns:
+            (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
+        """
+        # percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
+        # quantiles = self.quantiles(percentiles=percentiles)
+        # numerical_column_statistics = {}
+        # df = self.df.copy().to_pandas_df()
+        # for numerical_column in quantiles.index:
+        #     if len(quantiles.loc[numerical_column].dropna()) == 0:
+        #         continue
+        #     numerical_column_statistics[numerical_column] = {}
+        #     quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
+        #     quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
+        #     for i in range(len(quantile_ranges)-1):
+        #         q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
+        #         stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
+        #         numerical_column_statistics[numerical_column][q_id] = stats
+        # return numerical_column_statistics
+
+        # VAEX impementation (without peak-to-peak)
+        import scipy
+        df = self.df.copy()
+        numerical_columns = self._numerical_columns()
+        perc = np.linspace(0, 100, n+1).astype(int)
+        percentile = lambda col, percentage: \
+            df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
+        stats = {}
+        for col in numerical_columns:
+            iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
+            stats[col] = {f'{perc[i]}-{perc[i+1]}': {
+                'median': iq[i].median_approx(col).item(),
+                'mean': iq[i].mean(col).item(),
+                'variance': iq[i].var(col).item(),
+                'std': iq[i].std(col).item(),
+                'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
+            } for i in range(0, len(perc) - 1)}
+
+        return stats
+
+    def correlation_among_numerical_attributes(self):
+        """ Calculate the correlation matrix among all the numerical values
+
+        Returns:
+            (list) correlation matrix among all the numerical values
+        """
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
+        numerical_columns = [df.columns.get(column_name) for column_name in numerical_column_names]
+        return {'columns': numerical_column_names, 'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
+
+    def histogram(self):
+        """ Calculate the equi-width histogram of a numerical column
+
+        Returns:
+            (dict) column_name: bucket_counts,  bucket_boundaries
+        """
+        numerical_column_histograms = {}
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
+        for column_name in numerical_column_names:
+            numerical_column_histograms[column_name] = histogram(df.columns.get(column_name))
+        return numerical_column_histograms
+
+    def date_time_value_distribution(self):
+        """ Calculate the datetime value distribution in mm/yyyy intervals
+
+        Returns:
+            (dict) column_name: distribution dict -> mm/yyyy: count
+        """
+        column_date_time_value_distributions = {}
+        df = self.df.copy()
+        numerical_column_names = self._numerical_columns()
+        for column in df.columns:
+            if column not in numerical_column_names:
+                distribution = date_time_value_distribution(df.columns.get(column))
+                if distribution:
+                    column_date_time_value_distributions[column] = distribution
+        return column_date_time_value_distributions
+
+    def uniqueness(self):
+        """ Calculate the uniqueness factor of a column
+
+        Returns:
+            (dict) column_name: uniqueness metric (max 1.0)
+        """
+        column_uniqueness = {}
+        df = self.df.copy()
+        for column in df.columns:
+            column_uniqueness[column] = uniqueness(df.columns.get(column))
+        return column_uniqueness
+
+    def report(self, schemaDefs: str=None, **kwargs):
         """Creates a report with a collection of metadata.
         Parameters:
+            schemaDefs (str, optional): Path of schema definitions
             **kwargs: See StaticMap class
         Returns:
             (object) A report object.
@@ -397,6 +554,7 @@ class Profiler(object):
                 clusters_static = static_map.base64()
             except:
                 clusters_static = None
+            clusters_info = clusters.info
             shapes = loads(shapes.to_crs('EPSG:4326').to_json())
             try:
                 heatmap = self.heatmap()
@@ -417,11 +575,15 @@ class Profiler(object):
             short_crs = None
             heatmap_geojson = None
             heatmap_static = None
+            clusters_info = None
             shapes = None
             clusters_static = None
             asset_type = 'tabular'
 
+        scores = self.schema_similarities(schemaDefs)[0:5] if schemaDefs is not None and os.path.isdir(schemaDefs) else None
+
         samples = []
+
         if self.featureCount >= 100:
             for _ in range(4):
                 if self._has_geometry:
@@ -449,8 +611,18 @@ class Profiler(object):
             'heatmap': heatmap_geojson,
             'heatmapStatic': heatmap_static,
             'clusters': shapes,
+            'clustersInfo': clusters_info,
             'clustersStatic': clusters_static,
             'statistics': self.statistics().to_dict(),
-            'samples': samples
+            'samples': samples,
+            'valuePatternTypes': self.value_pattern_type(),
+            'keywords': self.keywords_per_column(),
+            'numericalValuePatterns': self.numerical_value_pattern(),
+            'numericalStatistics': self.ntile_numerical_statistics(),
+            'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
+            'histogram': self.histogram(),
+            'dateTimeValueDistribution': self.date_time_value_distribution(),
+            'uniqueness': self.uniqueness(),
+            'scores': scores.to_dict(orient='records'),
         }
         return Report(report)
