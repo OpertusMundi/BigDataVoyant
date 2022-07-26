@@ -534,12 +534,14 @@ class Profiler(object):
             except:
                 mbr_static = None
 
-            convex_hull = self.convex_hull()
-            try:
-                static_map.addWKT(convex_hull, self.short_crs)
-                convex_hull_static = static_map.base64()
-            except Exception as e:
-                convex_hull_static = None
+            convex_hull = None
+            convex_hull_static = None
+            # convex_hull = self.convex_hull()
+            # try:
+                # static_map.addWKT(convex_hull, self.short_crs)
+                # convex_hull_static = static_map.base64()
+            # except Exception as e:
+            #     convex_hull_static = None
 
             try:
                 thumbnail = self.thumbnail(**kwargs)
@@ -581,10 +583,12 @@ class Profiler(object):
         scores = self.schema_similarities(schemaDefs)[0:5] if schemaDefs is not None and os.path.isdir(schemaDefs) else None
 
         samples = []
-        if len(self.df) > 10:
-            for i in range(4):
+
+        if self.featureCount >= 100:
+            for _ in range(4):
                 if self._has_geometry:
-                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True, array_type="list"))
+                    samples.append(self.get_sample(n_obs=10, method="random").to_dict(keep_geometry=True,
+                                                                                      array_type="list"))
                 else:
                     samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
 
