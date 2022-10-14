@@ -171,7 +171,7 @@ def correlation_among_numerical_attributes(numerical_columns: typing.List[typing
 
 
 def histogram(numerical_column):
-    bucket_counts, bucket_ranges = np.histogram(numerical_column, bins='auto')
+    bucket_counts, bucket_ranges = np.histogram(np.isfinite(numerical_column), bins='auto')
     return list(bucket_counts), list(bucket_ranges)
 
 

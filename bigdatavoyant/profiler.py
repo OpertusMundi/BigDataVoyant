@@ -19,10 +19,20 @@ from .heatmap import Heatmap
 from .aux.schema import get_similarity_scores
 import os
 
+
 def custom_formatwarning(msg, *args, **kwargs):
     """Ignore everything except the message."""
     return str(msg) + '\n'
+
+
 warnings.formatwarning = custom_formatwarning
+
+
+def replace_empty_string_with_none(value):
+    if value == '':
+        return None
+    return value
+
 
 @vaex.register_dataframe_accessor('profiler', override=True)
 class Profiler(object):
@@ -39,6 +49,8 @@ class Profiler(object):
             df (object): The vector (geo)dataframe.
         """
         self.df = df
+        for col in self.df.get_column_names(virtual=False):
+            self.df[col] = self.df.apply(replace_empty_string_with_none, [self.df[col]]).evaluate()
         self._count = None
         self._categorical = None
         self._has_geometry = isinstance(df, GeoDataFrame)
@@ -425,41 +437,41 @@ class Profiler(object):
         Returns:
             (dict) column_name: statistics (median, mean, variance, stdev, peak-to-peak range, modal value)
         """
-        # percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
-        # quantiles = self.quantiles(percentiles=percentiles)
-        # numerical_column_statistics = {}
-        # df = self.df.copy().to_pandas_df()
-        # for numerical_column in quantiles.index:
-        #     if len(quantiles.loc[numerical_column].dropna()) == 0:
-        #         continue
-        #     numerical_column_statistics[numerical_column] = {}
-        #     quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
-        #     quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
-        #     for i in range(len(quantile_ranges)-1):
-        #         q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
-        #         stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
-        #         numerical_column_statistics[numerical_column][q_id] = stats
-        # return numerical_column_statistics
+        percentiles = np.linspace(0, 100, n+1).astype(int)[1:-1]
+        quantiles = self.quantiles(percentiles=percentiles)
+        numerical_column_statistics = {}
+        df = self.df.copy().to_pandas_df()
+        for numerical_column in quantiles.index:
+            if len(quantiles.loc[numerical_column].dropna()) == 0:
+                continue
+            numerical_column_statistics[numerical_column] = {}
+            quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
+            quantile_ranges = [0.0] + list(quantiles.loc[numerical_column]) + [math.inf]
+            for i in range(len(quantile_ranges)-1):
+                q_id = f'{quantile_idx[i]}-{quantile_idx[i+1]}'
+                stats = numerical_statistics(df.query(f'{quantile_ranges[i]}<{numerical_column}<{quantile_ranges[i+1]}')[numerical_column])
+                numerical_column_statistics[numerical_column][q_id] = stats
+        return numerical_column_statistics
 
         # VAEX impementation (without peak-to-peak)
-        import scipy
-        df = self.df.copy()
-        numerical_columns = self._numerical_columns()
-        perc = np.linspace(0, 100, n+1).astype(int)
-        percentile = lambda col, percentage: \
-            df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
-        stats = {}
-        for col in numerical_columns:
-            iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
-            stats[col] = {f'{perc[i]}-{perc[i+1]}': {
-                'median': iq[i].median_approx(col).item(),
-                'mean': iq[i].mean(col).item(),
-                'variance': iq[i].var(col).item(),
-                'std': iq[i].std(col).item(),
-                'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
-            } for i in range(0, len(perc) - 1)}
-
-        return stats
+        # import scipy
+        # df = self.df.copy()
+        # numerical_columns = self._numerical_columns()
+        # perc = np.linspace(0, 100, n+1).astype(int)
+        # percentile = lambda col, percentage: \
+        #     df.min(col).item() if percentage == 0 else (df.max(col).item() if percentage == 100 else df.percentile_approx(col, percentage=percentage).item())
+        # stats = {}
+        # for col in numerical_columns:
+        #     iq = [df[(percentile(col, perc[i])<=df[col]) & (df[col]<=percentile(col, perc[i+1]))] for i in range(0, len(perc) - 1)]
+        #     stats[col] = {f'{perc[i]}-{perc[i+1]}': {
+        #         'median': iq[i].median_approx(col).item(),
+        #         'mean': iq[i].mean(col).item(),
+        #         'variance': iq[i].var(col).item(),
+        #         'std': iq[i].std(col).item(),
+        #         'modal value': {values[0]: values[1].item() if np.shape(values[1])[0] == 1 else np.nan for values in zip({'value', 'count'}, scipy.stats.mode(iq[i][col].values))}
+        #     } for i in range(0, len(perc) - 1)}
+        #
+        # return stats
 
     def correlation_among_numerical_attributes(self):
         """ Calculate the correlation matrix among all the numerical values
