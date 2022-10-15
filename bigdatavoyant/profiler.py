@@ -388,7 +388,7 @@ class Profiler(object):
         df = self.df.copy()
         numerical_column_names = [column_name for column_name, data_type in self.data_types().items()
                                   if data_type.startswith('int') or data_type.startswith('float')]
-        for column in df.columns:
+        for column in self.df.get_column_names(virtual=False):
             if is_phone(df.columns.get(column)):
                 value_pattern_types[column] = 'Contains phone information'
             elif is_email(df.columns.get(column)):
@@ -422,10 +422,10 @@ class Profiler(object):
         """
         numerical_column_patterns = {}
         df = self.df.copy()
-        for column in df.columns:
-            pattern = numerical_value_pattern(df.columns.get(column))
+        for col in self.df.get_column_names(virtual=False):
+            pattern = numerical_value_pattern(df.columns.get(col))
             if pattern != '':
-                numerical_column_patterns[column] = pattern
+                numerical_column_patterns[col] = pattern
         return numerical_column_patterns
 
     def ntile_numerical_statistics(self, n=4):
@@ -473,16 +473,18 @@ class Profiler(object):
         #
         # return stats
 
-    def correlation_among_numerical_attributes(self):
+    def correlation_among_numerical_attributes(self, numerical_value_columns):
         """ Calculate the correlation matrix among all the numerical values
 
         Returns:
             (list) correlation matrix among all the numerical values
         """
         df = self.df.copy()
-        numerical_column_names = self._numerical_columns()
+        numerical_column_names = list(set(self._numerical_columns()).union(set(numerical_value_columns)))
         numerical_columns = [df.columns.get(column_name) for column_name in numerical_column_names]
-        return {'columns': numerical_column_names, 'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
+        res = {'columns': numerical_column_names,
+               'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
+        return res
 
     def histogram(self):
         """ Calculate the equi-width histogram of a numerical column
@@ -506,7 +508,7 @@ class Profiler(object):
         column_date_time_value_distributions = {}
         df = self.df.copy()
         numerical_column_names = self._numerical_columns()
-        for column in df.columns:
+        for column in self.df.get_column_names(virtual=False):
             if column not in numerical_column_names:
                 distribution = date_time_value_distribution(df.columns.get(column))
                 if distribution:
@@ -521,8 +523,8 @@ class Profiler(object):
         """
         column_uniqueness = {}
         df = self.df.copy()
-        for column in df.columns:
-            column_uniqueness[column] = uniqueness(df.columns.get(column))
+        for col in self.df.get_column_names(virtual=False):
+            column_uniqueness[col] = uniqueness(df.columns.get(col))
         return column_uniqueness
 
     def report(self, schemaDefs: str=None, **kwargs):
@@ -604,6 +606,8 @@ class Profiler(object):
                 else:
                     samples.append(self.get_sample(n_obs=10, method="random").to_dict(array_type="list"))
 
+        numerical_value_columns = self.numerical_value_pattern()
+
         report = {
             'assetType': asset_type,
             'mbr': mbr,
@@ -629,9 +633,9 @@ class Profiler(object):
             'samples': samples,
             'valuePatternTypes': self.value_pattern_type(),
             'keywords': self.keywords_per_column(),
-            'numericalValuePatterns': self.numerical_value_pattern(),
+            'numericalValuePatterns': numerical_value_columns,
             'numericalStatistics': self.ntile_numerical_statistics(),
-            'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(),
+            'numericalAttributeCorrelation': self.correlation_among_numerical_attributes(numerical_value_columns.keys()),
             'histogram': self.histogram(),
             'dateTimeValueDistribution': self.date_time_value_distribution(),
             'uniqueness': self.uniqueness(),
