@@ -155,14 +155,22 @@ def numerical_value_pattern(column):
 
 
 def numerical_statistics(column):
-    modal_num, count = stats.mode(column)
+    try:
+        modal_num, count = stats.mode(column)
+        modal_value = {"value": modal_num[0], "count": count[0]}
+    except IndexError:
+        modal_value = None
+    try:
+        ptp = np.ptp(column)
+    except ValueError:
+        ptp = None
     return {
         "median": np.median(column),
         "mean": np.mean(column),
         "variance": np.var(column),
         "stdev": np.std(column),
-        "peak-to-peak range": np.ptp(column),
-        "modal value": {"value": modal_num[0], "count": count[0]},
+        "peak-to-peak range": ptp,
+        "modal value": modal_value,
     }
 
 

@@ -481,7 +481,8 @@ class Profiler(object):
         """
         df = self.df.copy()
         numerical_column_names = list(set(self._numerical_columns()).union(set(numerical_value_columns)))
-        numerical_columns = [df.columns.get(column_name) for column_name in numerical_column_names]
+        numerical_columns = [df.columns.get(column_name).astype(np.float)
+                             for column_name in numerical_column_names]
         res = {'columns': numerical_column_names,
                'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
         return res
