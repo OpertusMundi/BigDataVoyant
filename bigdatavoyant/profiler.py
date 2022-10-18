@@ -528,10 +528,28 @@ class Profiler(object):
             column_uniqueness[col] = uniqueness(df.columns.get(col))
         return column_uniqueness
 
-    def report(self, schemaDefs: str=None, **kwargs):
+    def count_vertices(self):
+        """Counts the total number of vertices (ccordinates) of all geometries in the GeoDataFrame.
+        """
+        gdf = self.df.copy()
+        geom_type_mapping = {-1: "missing", 0: "POINT", 1: "LINESTRING", 2: "LINEARRING", 3: "POLYGON", 4: "MULTIPOINT",
+                             5: "MULTILINESTRING", 6: "MULTIPOLYGON", 7: "GEOMETRYCOLLECTION"}
+        geometry_type_counts = {"missing": 0, "POINT": 0, "LINESTRING": 0, "LINEARRING": 0, "POLYGON": 0,
+                                "MULTIPOINT": 0, "MULTILINESTRING": 0, "MULTIPOLYGON": 0, "GEOMETRYCOLLECTION": 0}
+        gcol = gdf.geometry  # geometry column of the entire data frame
+        # Count total number of vertices over all geometries
+        num_vertices = 0
+        for geom in gcol:
+            geometry_type_counts[geom_type_mapping[pg.get_type_id(geom)]] += 1
+            num_vertices += pg.get_num_coordinates(geom)
+        return num_vertices, geometry_type_counts
+
+    def report(self, schemaDefs: str = None, convex_hull_max_num_vertices: int = 1_000_000, **kwargs):
         """Creates a report with a collection of metadata.
         Parameters:
             schemaDefs (str, optional): Path of schema definitions
+            convex_hull_max_num_vertices: The allowed maximum amount of vertices in a geometry
+                                            for convex hull implementation
             **kwargs: See StaticMap class
         Returns:
             (object) A report object.
@@ -549,14 +567,19 @@ class Profiler(object):
             except:
                 mbr_static = None
 
-            convex_hull = None
-            convex_hull_static = None
-            # convex_hull = self.convex_hull()
-            # try:
-                # static_map.addWKT(convex_hull, self.short_crs)
-                # convex_hull_static = static_map.base64()
-            # except Exception as e:
-            #     convex_hull_static = None
+            num_vertices, geometry_type_counts = self.count_vertices()
+
+            if num_vertices < convex_hull_max_num_vertices:
+                convex_hull = self.convex_hull()
+                try:
+                    static_map.addWKT(convex_hull, self.short_crs)
+                    convex_hull_static = static_map.base64()
+                except:
+                    convex_hull_static = None
+            else:
+                convex_hull = None
+                convex_hull_static = None
+                warnings.warn(f'Too many vertices({num_vertices}); Convex hull will not be created.')
 
             try:
                 thumbnail = self.thumbnail(**kwargs)
@@ -586,6 +609,7 @@ class Profiler(object):
             mbr_static = None
             convex_hull = None
             convex_hull_static = None
+            geometry_type_counts = None
             thumbnail = None
             short_crs = None
             heatmap_geojson = None
@@ -641,5 +665,6 @@ class Profiler(object):
             'dateTimeValueDistribution': self.date_time_value_distribution(),
             'uniqueness': self.uniqueness(),
             'scores': None if scores is None else scores.to_dict(orient='records'),
+            'geometryTypeCounts': geometry_type_counts,
         }
         return Report(report)
