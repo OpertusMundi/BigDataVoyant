@@ -174,8 +174,22 @@ def numerical_statistics(column):
     }
 
 
-def correlation_among_numerical_attributes(numerical_columns: typing.List[typing.List]):
-    return np.corrcoef(numerical_columns).tolist()
+def transform_column_to_float(column):
+    try:
+        float_column = column.astype(np.float)
+    except ValueError:
+        return None
+    else:
+        return float_column
+
+
+def correlation_among_numerical_attributes(numerical_columns: typing.List[np.ndarray]):
+    true_numerical_columns = []
+    for numerical_column in numerical_columns:
+        transformed_column = transform_column_to_float(numerical_column)
+        if transformed_column is not None:
+            true_numerical_columns.append(transformed_column)
+    return np.corrcoef(true_numerical_columns).tolist()
 
 
 def histogram(numerical_column):
