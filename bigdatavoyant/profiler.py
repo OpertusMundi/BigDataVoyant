@@ -428,6 +428,11 @@ class Profiler(object):
                 numerical_column_patterns[col] = pattern
         return numerical_column_patterns
 
+    @staticmethod
+    def is_unique(s):
+        a = s.to_numpy()  # s.values (pandas<0.24)
+        return (a[0] == a).all()
+
     def ntile_numerical_statistics(self, n=4):
         """ Calculate the numerical statistics per column
 
@@ -442,7 +447,7 @@ class Profiler(object):
         numerical_column_statistics = {}
         df = self.df.copy().to_pandas_df()
         for numerical_column in quantiles.index:
-            if len(quantiles.loc[numerical_column].dropna()) == 0:
+            if len(quantiles.loc[numerical_column].dropna()) == 0 or self.is_unique(df[numerical_column]):
                 continue
             numerical_column_statistics[numerical_column] = {}
             quantile_idx = [0] + list(quantiles.loc[numerical_column].index) + [100]
@@ -481,10 +486,11 @@ class Profiler(object):
         """
         df = self.df.copy()
         numerical_column_names = list(set(self._numerical_columns()).union(set(numerical_value_columns)))
-        numerical_columns = [df.columns.get(column_name)
+        numerical_columns = [(column_name, df.columns.get(column_name))
                              for column_name in numerical_column_names]
-        res = {'columns': numerical_column_names,
-               'cor_matrix': correlation_among_numerical_attributes(numerical_columns)}
+        true_numerical_columns, corr = correlation_among_numerical_attributes(numerical_columns)
+        res = {'columns': true_numerical_columns,
+               'cor_matrix': corr}
         return res
 
     def histogram(self):

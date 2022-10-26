@@ -176,20 +176,38 @@ def numerical_statistics(column):
 
 def transform_column_to_float(column):
     try:
-        float_column = column.astype(np.float)
+        column = column.astype(np.float)
+        column = column[~np.isnan(column)]
+        if np.isnan(column).all():
+            return None
+        if np.all(column == column[0]):
+            return None
     except ValueError:
         return None
     else:
-        return float_column
+        return column
 
 
-def correlation_among_numerical_attributes(numerical_columns: typing.List[np.ndarray]):
+def get_shortest_list_len(lst):
+    return len(min(lst, key=len))
+
+
+def make_square_2d_list(lst_2d, size):
+    return [lst_1d[:size] for lst_1d in lst_2d]
+
+
+def correlation_among_numerical_attributes(numerical_columns):
     true_numerical_columns = []
-    for numerical_column in numerical_columns:
+    true_numerical_column_names = []
+    for col_name, numerical_column in numerical_columns:
         transformed_column = transform_column_to_float(numerical_column)
         if transformed_column is not None:
             true_numerical_columns.append(transformed_column)
-    return np.corrcoef(true_numerical_columns).tolist()
+            true_numerical_column_names.append(col_name)
+    s_len = get_shortest_list_len(true_numerical_columns)
+    sq_true_numerical_columns = make_square_2d_list(true_numerical_columns, s_len)
+    corr = np.corrcoef(sq_true_numerical_columns).tolist()
+    return true_numerical_column_names, corr
 
 
 def histogram(numerical_column):
