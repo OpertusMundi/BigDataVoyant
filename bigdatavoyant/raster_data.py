@@ -3,6 +3,7 @@ from osgeo import gdal
 from bigdatavoyant.aux.cog_validator import validate_cog
 from bigdatavoyant.report import Report
 import os
+import base64
 
 class RasterData(object):
     """Raster Profiler class using GDAL datasource methods.
@@ -71,6 +72,7 @@ class RasterData(object):
         Parameters:
             file (string): The full path of the raster file.
         """
+        self.file_path = file
         return bigdatavoyant.io.read_file(file, type="raster")
 
     def _getBandInfo(self, scope, **kwargs):
@@ -236,6 +238,14 @@ class RasterData(object):
         sample_ds = gdal.Translate(file, self._ds, projWin=bbox)
         sample_ds = None
 
+    def thumbnail(self, percent_reduction: int = 20):
+        output_file_path = self.file_path.split(".")[0] + ".png"
+        gdal.Translate(output_file_path, self.file_path, options=f'-of PNG -outsize {percent_reduction}% 0')
+        with open(output_file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read())
+        os.remove(output_file_path)
+        return encoded_string
+
     def report(self, **kwargs):
         """Creates a report with a collection of metadata.
         Returns:
@@ -263,5 +273,6 @@ class RasterData(object):
         report['noDataValue'] = self.noDataValue()
         report['crs'] = self._short_crs
         report['colorInterpretation'] = self.colorInterpretation()
+        report['thumbnail'] = self.thumbnail()
 
         return Report(report)
