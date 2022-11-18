@@ -241,10 +241,14 @@ class RasterData(object):
     def thumbnail(self, percent_reduction: int = 20):
         output_file_path = self.file_path.split(".")[0] + ".png"
         gdal.Translate(output_file_path, self.file_path, options=f'-of PNG -outsize {percent_reduction}% 0')
-        with open(output_file_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read())
-        os.remove(output_file_path)
-        return encoded_string
+        try:
+            with open(output_file_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read())
+            os.remove(output_file_path)
+        except FileNotFoundError:
+            return None
+        else:
+            return encoded_string
 
     def report(self, **kwargs):
         """Creates a report with a collection of metadata.
