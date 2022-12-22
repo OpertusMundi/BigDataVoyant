@@ -587,9 +587,13 @@ class Profiler(object):
                 convex_hull_static = None
                 warnings.warn(f'Too many vertices({num_vertices}); Convex hull will not be created.')
 
-            try:
-                thumbnail = self.thumbnail(**kwargs)
-            except:
+            if num_vertices < convex_hull_max_num_vertices:
+                try:
+                    thumbnail = self.thumbnail(**kwargs)
+                except:
+                    thumbnail = None
+            else:
+                warnings.warn(f'Too many vertices({num_vertices}); Thumbnail will not be created.')
                 thumbnail = None
             clusters = self.clusters()
             shapes = clusters.shapes()
