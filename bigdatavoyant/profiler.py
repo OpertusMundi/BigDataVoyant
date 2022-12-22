@@ -19,6 +19,7 @@ from .heatmap import Heatmap
 from .aux.schema import get_similarity_scores
 import os
 
+import time
 
 def custom_formatwarning(msg, *args, **kwargs):
     """Ignore everything except the message."""
@@ -348,7 +349,7 @@ class Profiler(object):
         heatmap = Heatmap(self.df, **kwargs)
         return heatmap
 
-    def clusters(self, maxpoints=1000000, **kwargs):
+    def clusters(self, maxpoints=100_000, **kwargs):
         """Computes clusters using centroids of geometries.
         Parameters:
             max_points (int): The maximum number of features that will be used for the cluster computation.
