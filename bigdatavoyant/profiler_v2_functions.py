@@ -231,7 +231,7 @@ def date_time_value_distribution(column):
 
 
 def uniqueness(column):
-    column = [i for i in column if i]
+    column = np.array([hash(i) for i in column if i], dtype=np.uint64)
     total = len(column)
     if total == 0:
         return None

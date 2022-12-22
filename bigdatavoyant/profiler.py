@@ -19,7 +19,6 @@ from .heatmap import Heatmap
 from .aux.schema import get_similarity_scores
 import os
 
-import time
 
 def custom_formatwarning(msg, *args, **kwargs):
     """Ignore everything except the message."""

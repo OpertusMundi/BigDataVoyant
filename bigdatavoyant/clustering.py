@@ -14,7 +14,7 @@ class Clustering(object):
     Computes clusters using DBSCAN or OPTICS algorithm as implemented in sklearn or HDBSCAN.
     """
 
-    def __init__(self, pois, alg="hdbscan", min_samples=None, eps=None, n_jobs=-1, **kwargs):
+    def __init__(self, pois, alg="hdbscan", min_samples=None, eps=None, n_jobs=1, **kwargs):
         """Computes clusters using the sklearn algorithms or HDBSCAN.
         Parameters:
             pois (GeoDataFrame): A POI GeoDataFrame.
